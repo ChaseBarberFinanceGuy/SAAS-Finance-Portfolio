@@ -9,5 +9,10 @@ Application (Client) ID:
 Power BI Report ID:
 61b82083-8e1e-4c0b-9155-aba711a00224
 
-ENTRA Streamlit secret ID. Super secret. Make sure not to put it into the GitHub Repo and commit it.
-.5m8Q~tv95-VNBnSDn4~qeSRip_tN5HAITOMHc5p
+
+$env:POWERBI_TENANT_ID="ed76fcdf-8c13-4129-917c-9088f819cfd8"
+$env:POWERBI_CLIENT_ID="4a8b15ab-fb4b-4f6b-82d9-999e4022a823"
+$env:POWERBI_REPORT_ID="61b82083-8e1e-4c0b-9155-aba711a00224"
+$env:POWERBI_CLIENT_SECRET=".5m8Q~tv95-VNBnSDn4~qeSRip_tN5HAITOMHc5p"
+$env:POWERBI_REDIRECT_URI="http://localhost:8501"
+

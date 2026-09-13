@@ -1,10 +1,10 @@
 {
   "catalog": {
-    "name": "Aster AI SaaS Finance Metric Catalog",
+    "name": "Stratum SaaS Finance Metric Catalog",
     "version": "0.2.0",
     "draft_date": "2026-09-09",
     "intended_repo_path": "config/metrics.json",
-    "company": "Aster AI",
+    "company": "Stratum",
     "source_dataset": "Prime Levels synthetic B2B SaaS subscription dataset",
     "status": "source_mapped_metrics_verified",
     "purpose": "Single source of truth for finance metric definitions used by the Executive Dashboard, AI Finance Copilot, and automated Monthly Business Review."
@@ -1423,6 +1423,136 @@
       },
       "caveat": "Uses subtotal_usd (amount_usd less discount_usd, before tax). This is invoice-date billings and can be lumpy for annual/multi-month invoices. Refund/failed/overdue policy can be added as separate collection metrics.",
       "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "active_customers_yoy_pct": {
+      "id": "active_customers_yoy_pct",
+      "label": "Active Customer Growth YoY",
+      "category": "growth",
+      "definition": "Percentage change in active customer accounts versus the same month 12 months earlier.",
+      "formula": "(active_customers / active_customers_12_months_prior) - 1",
+      "period": {
+        "type": "comparison",
+        "grain": "month"
+      },
+      "format": {
+        "type": "percentage",
+        "decimals": 1,
+        "suffix": "%"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.customer_id",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_company_monthly_kpis",
+        "certified_field": "active_customers_yoy_pct",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2025-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 0.31134969325153383,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "active customer growth",
+        "customer growth yoy",
+        "logo growth yoy"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "executive_overview",
+        "mbr_slide": 1,
+        "priority": "supporting"
+      },
+      "caveat": "Requires a comparable month 12 months earlier and uses active accounts with positive MRR.",
+      "validation_tests": [
+        "null when 12-month prior comparator is unavailable"
+      ],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "avg_arr_per_account_yoy_pct": {
+      "id": "avg_arr_per_account_yoy_pct",
+      "label": "Average ARR per Active Account Growth YoY",
+      "category": "growth",
+      "definition": "Percentage change in Average ARR per Active Account versus the same month 12 months earlier.",
+      "formula": "(avg_arr_per_account / avg_arr_per_account_12_months_prior) - 1",
+      "period": {
+        "type": "comparison",
+        "grain": "month"
+      },
+      "format": {
+        "type": "percentage",
+        "decimals": 1,
+        "suffix": "%"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.customer_id",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_company_monthly_kpis",
+        "certified_field": "avg_arr_per_account_yoy_pct",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2025-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 0.14531204827685906,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "arr per account growth",
+        "arpa growth yoy",
+        "average arr per customer growth"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "executive_overview",
+        "mbr_slide": 4,
+        "priority": "supporting"
+      },
+      "caveat": "Annualized recurring run rate per active account; requires a comparable month 12 months earlier.",
+      "validation_tests": [
+        "null when 12-month prior comparator is unavailable"
+      ],
       "ai_behavior": {
         "headline_answer_uses_certified_value": true,
         "always_show_period": true,
