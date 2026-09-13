@@ -1,0 +1,77 @@
+table 'Bridge Steps'
+	lineageTag: ab34a399-c77b-4521-9e49-66df3600225a
+
+	measure 'MRR Bridge Value' = ```
+			
+			SWITCH(
+			    SELECTEDVALUE('Bridge Steps'[Bridge Step]),
+			    
+			    "Beginning MRR", [Prior Month Ending MRR],
+			    "New MRR", [New MRR],
+			    "Expansion MRR", [Expansion MRR],
+			    "Reactivation MRR", [Reactivation MRR],
+			    "Contraction MRR", -[Contraction MRR],
+			    "Churned MRR", -[Churned MRR],
+			    
+			    BLANK()
+			)
+			```
+		lineageTag: c3e66461-a9a6-4f9b-bdc7-c12d6055b8f0
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'ARR Bridge Value' =
+			
+			SWITCH(
+			    SELECTEDVALUE('Bridge Steps'[Bridge Step]),
+			
+			    "Beginning MRR", [Prior Month Ending MRR] * 12,
+			    "New MRR", [New MRR] * 12,
+			    "Expansion MRR", [Expansion MRR] * 12,
+			    "Reactivation MRR", [Reactivation MRR] * 12,
+			    "Contraction MRR", -[Contraction MRR] * 12,
+			    "Churned MRR", -[Churned MRR] * 12,
+			
+			    BLANK()
+			)
+		lineageTag: b2a0928d-55b6-41dd-902f-43eebf5cd2a3
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'Bridge Step'
+		lineageTag: 38781bd7-eb9a-4a38-99cd-67a1a9c74ac8
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Bridge Step]
+		sortByColumn: Sort
+
+		annotation SummarizationSetBy = Automatic
+
+	column Sort
+		formatString: 0
+		lineageTag: 2eb38e8e-16b7-40e6-9044-878ba7808d45
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Sort]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Bridge Steps' = calculated
+		mode: import
+		source =
+				
+				DATATABLE(
+				    "Bridge Step", STRING,
+				    "Sort", INTEGER,
+				    {
+				        {"Beginning MRR", 1},
+				        {"New MRR", 2},
+				        {"Expansion MRR", 3},
+				        {"Reactivation MRR", 4},
+				        {"Contraction MRR", 5},
+				        {"Churned MRR", 6}
+				    }
+				)
+
+	annotation PBI_Id = 82ec1beba1a14799b5456be2576a60bc
+

@@ -1,0 +1,69 @@
+relationship e6e56890-70c9-408a-998b-83a0bf742d45
+	joinOnDateBehavior: datePartOnly
+	fromColumn: customers.'cohort month'
+	toColumn: LocalDateTable_79e1d2e1-c869-4d83-bc0e-7ba29f64c90a.Date
+
+relationship a4182eac-4b6f-4cfe-81c6-9226486f49aa
+	joinOnDateBehavior: datePartOnly
+	fromColumn: customers.'churn date'
+	toColumn: LocalDateTable_1ebb7bde-8e46-4ad4-a40e-b53512b84d3b.Date
+
+relationship 339db8b2-db10-44fe-bbb9-036a032767b1
+	joinOnDateBehavior: datePartOnly
+	fromColumn: invoices.'billing period start'
+	toColumn: LocalDateTable_587dacd3-1312-40d1-be1b-d41acee57dd0.Date
+
+relationship 9b9f3dde-00bb-4ecb-b3f7-8b3649f05743
+	joinOnDateBehavior: datePartOnly
+	fromColumn: invoices.'billing period end'
+	toColumn: LocalDateTable_4ac8a3f9-aa06-40f8-b06e-1996e617ad6a.Date
+
+relationship c5a73250-f544-4fbb-9077-486f8f95756f
+	joinOnDateBehavior: datePartOnly
+	fromColumn: customers.'signup date'
+	toColumn: LocalDateTable_14e017bb-29bc-4d6e-a8c1-94d89deae4d6.Date
+
+relationship 6e2b7fc3-6353-4b12-96d0-eadcab81dcd7
+	joinOnDateBehavior: datePartOnly
+	fromColumn: plans.'launched date'
+	toColumn: LocalDateTable_92a3592a-85fd-4b95-8d19-403cda508730.Date
+
+relationship 55a6654e-6582-458f-9b53-bb80a39566f4
+	joinOnDateBehavior: datePartOnly
+	fromColumn: 'subscription months'.'period month'
+	toColumn: LocalDateTable_eeadd8a6-b4b9-4d8a-a9d8-ba2918a9491f.Date
+
+relationship c59982ba-ce80-4f24-afb4-756fb3763415
+	joinOnDateBehavior: datePartOnly
+	fromColumn: 'subscription months'.'cohort month'
+	toColumn: LocalDateTable_fd22ac03-9044-47a0-813b-fe4828122fdd.Date
+
+relationship 34324d43-7d45-4806-90e8-1bb49a60c634
+	joinOnDateBehavior: datePartOnly
+	fromColumn: subscriptions.'end date'
+	toColumn: LocalDateTable_db73d29a-ba43-4d32-a1e7-e575ace00a9f.Date
+
+relationship AutoDetected_4371af19-0194-4be6-9c14-706dc5807b16
+	fromColumn: subscriptions.'customer id'
+	toColumn: customers.customer
+
+relationship AutoDetected_fda7f58a-9eb8-4cf9-9f5f-f0b98a7e2522
+	fromColumn: invoices.'subscription id'
+	toColumn: subscriptions.'subscription id'
+
+relationship AutoDetected_bbdb68d1-d163-4bfb-9414-ad17ed05fc08
+	fromColumn: 'subscription months'.'subscription id'
+	toColumn: subscriptions.'subscription id'
+
+relationship AutoDetected_c5e5ef1d-53f2-43da-aa1c-4245aa337425
+	fromColumn: subscriptions.'plan id'
+	toColumn: plans.'plan id'
+
+relationship daf1bcad-b605-2d6e-1e6b-709f34ea5436
+	fromColumn: 'subscription months'.'month start date'
+	toColumn: Calendar.Date
+
+relationship 77756ff0-c04a-f0be-652c-8ecf1111c1b9
+	fromColumn: invoices.'invoice date'
+	toColumn: Calendar.Date
+

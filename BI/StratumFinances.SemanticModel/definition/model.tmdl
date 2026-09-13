@@ -1,0 +1,43 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	valueFilterBehavior: independent
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+/// Errors in queries that were loaded on 9/9/2026 10:36:11 PM.
+queryGroup 'Query Errors - 9/9/2026 10:36:11 PM'
+
+	annotation PBI_QueryGroupOrder = 0
+
+annotation __PBI_TimeIntelligenceEnabled = 1
+
+annotation PBI_ProTooling = ["DevMode","TMDLView_Desktop"]
+
+annotation PBI_QueryOrder = ["customers","invoices","plans","subscription months","subscriptions","Errors in invoices"]
+
+ref table customers
+ref table DateTableTemplate_43923e1d-0d43-4044-8d5c-01428d17c5b1
+ref table LocalDateTable_79e1d2e1-c869-4d83-bc0e-7ba29f64c90a
+ref table LocalDateTable_1ebb7bde-8e46-4ad4-a40e-b53512b84d3b
+ref table invoices
+ref table LocalDateTable_587dacd3-1312-40d1-be1b-d41acee57dd0
+ref table LocalDateTable_4ac8a3f9-aa06-40f8-b06e-1996e617ad6a
+ref table LocalDateTable_14e017bb-29bc-4d6e-a8c1-94d89deae4d6
+ref table plans
+ref table LocalDateTable_92a3592a-85fd-4b95-8d19-403cda508730
+ref table 'subscription months'
+ref table LocalDateTable_eeadd8a6-b4b9-4d8a-a9d8-ba2918a9491f
+ref table LocalDateTable_fd22ac03-9044-47a0-813b-fe4828122fdd
+ref table subscriptions
+ref table LocalDateTable_db73d29a-ba43-4d32-a1e7-e575ace00a9f
+ref table Calendar
+ref table 'Finance Metrics'
+ref table 'Bridge Steps'
+ref table 'Revenue View'
+ref table Segments
+
+ref cultureInfo en-US
+

@@ -1,0 +1,151 @@
+{
+  "version": "1.1.0",
+  "diagrams": [
+    {
+      "ordinal": 0,
+      "scrollPosition": {
+        "x": 0,
+        "y": 0
+      },
+      "nodes": [
+        {
+          "location": {
+            "x": 0,
+            "y": 0
+          },
+          "nodeIndex": "customers",
+          "nodeLineageTag": "7aa35e4e-db58-49f3-abd4-c30e208fd9d0",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 4
+        },
+        {
+          "location": {
+            "x": 603.19137670288035,
+            "y": 520.87786229768244
+          },
+          "nodeIndex": "invoices",
+          "nodeLineageTag": "c0ac63e0-3f15-4088-8fda-c3ddc63d22d5",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 5
+        },
+        {
+          "location": {
+            "x": 634.806667739342,
+            "y": 0
+          },
+          "nodeIndex": "plans",
+          "nodeLineageTag": "2661e857-800c-42db-b91e-74a0441db5b6",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 2
+        },
+        {
+          "location": {
+            "x": 310.19242874261204,
+            "y": 266.91378671520357
+          },
+          "nodeIndex": "subscriptions",
+          "nodeLineageTag": "32119f2e-8107-4804-867d-06720d33c7e7",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 3
+        },
+        {
+          "location": {
+            "x": 311.51009510873388,
+            "y": 697.07304358111423
+          },
+          "nodeIndex": "Calendar",
+          "nodeLineageTag": "f1d21e88-a807-4973-8105-a60b03597083",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 6
+        },
+        {
+          "location": {
+            "x": 0,
+            "y": 502.195766814366
+          },
+          "nodeIndex": "subscription months",
+          "nodeLineageTag": "15243b44-615f-4e2b-9b3b-0b34e2f34402",
+          "size": {
+            "height": 300,
+            "width": 234
+          },
+          "zIndex": 1
+        },
+        {
+          "location": {
+            "x": 947.04442321763258,
+            "y": 292.70770511327476
+          },
+          "nodeIndex": "Finance Metrics",
+          "nodeLineageTag": "39ad4cf9-7dd9-4029-ae5d-ba40f6ec25ca",
+          "size": {
+            "height": 442.70385699999963,
+            "width": 234
+          },
+          "zIndex": 7
+        },
+        {
+          "location": {
+            "x": 1224.8627175637969,
+            "y": 416.82554679055704
+          },
+          "nodeIndex": "Revenue View",
+          "nodeLineageTag": "03745210-8328-48b7-b92c-ad00d409a62c",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 10
+        },
+        {
+          "location": {
+            "x": 1225.4129575637974,
+            "y": 597.52476879055678
+          },
+          "nodeIndex": "Segments",
+          "nodeLineageTag": "01a6fd37-30ac-43ba-9ea9-d00f1978a817",
+          "size": {
+            "height": 152,
+            "width": 234
+          },
+          "zIndex": 8
+        },
+        {
+          "location": {
+            "x": 1223.9581792176327,
+            "y": 178.46666579055736
+          },
+          "nodeIndex": "Bridge Steps",
+          "size": {
+            "height": 200,
+            "width": 234
+          },
+          "zIndex": 9
+        }
+      ],
+      "name": "All tables",
+      "zoomValue": 56.447393005377833,
+      "pinKeyFieldsToTop": false,
+      "showExtraHeaderInfo": false,
+      "hideKeyFieldsWhenCollapsed": false,
+      "tablesLocked": false
+    }
+  ],
+  "selectedDiagram": "All tables",
+  "defaultDiagram": "All tables"
+}

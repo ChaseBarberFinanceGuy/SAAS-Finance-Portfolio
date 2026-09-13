@@ -1,0 +1,13 @@
+data/raw/*
+*.duckdb
+*.db
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+.streamlit/secrets.toml
+reports/generated/*
+Thumbs.db
+Desktop.ini
+.auth_flow.json

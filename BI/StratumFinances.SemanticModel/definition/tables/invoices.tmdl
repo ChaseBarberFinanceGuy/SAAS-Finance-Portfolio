@@ -1,0 +1,186 @@
+table invoices
+	lineageTag: c0ac63e0-3f15-4088-8fda-c3ddc63d22d5
+
+	column 'invoice id'
+		dataType: string
+		lineageTag: f74da16a-c294-442d-8ff3-07da65d36f3d
+		summarizeBy: none
+		sourceColumn: invoice id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'customer id'
+		dataType: string
+		lineageTag: da24ccc8-27fa-4819-a708-346abe811621
+		summarizeBy: none
+		sourceColumn: customer id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'subscription id'
+		dataType: string
+		lineageTag: f5f15124-7d1b-4e27-bf43-18b1060c65c9
+		summarizeBy: none
+		sourceColumn: subscription id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'invoice date'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 00fa660c-62b6-452b-b2fa-eaa8b19d0515
+		summarizeBy: none
+		sourceColumn: invoice date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'invoice month'
+		dataType: string
+		lineageTag: 1bd5c91a-9ae8-402c-a363-d9cfed8b7478
+		summarizeBy: none
+		sourceColumn: invoice month
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'billing period start'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: d17acaf7-b57a-480e-8591-0c0e6aa482b8
+		summarizeBy: none
+		sourceColumn: billing period start
+
+		variation Variation
+			isDefault
+			relationship: 339db8b2-db10-44fe-bbb9-036a032767b1
+			defaultHierarchy: LocalDateTable_587dacd3-1312-40d1-be1b-d41acee57dd0.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'billing period end'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 66130b32-9f66-44c2-a73c-7b38bb009578
+		summarizeBy: none
+		sourceColumn: billing period end
+
+		variation Variation
+			isDefault
+			relationship: 9b9f3dde-00bb-4ecb-b3f7-8b3649f05743
+			defaultHierarchy: LocalDateTable_4ac8a3f9-aa06-40f8-b06e-1996e617ad6a.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'months covered'
+		dataType: int64
+		formatString: 0
+		lineageTag: 7234e9e1-a5b7-4685-821d-460af23cd9ee
+		summarizeBy: sum
+		sourceColumn: months covered
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'amount usd'
+		dataType: double
+		lineageTag: 12990b08-1606-4225-a319-d62e1ffc50d8
+		summarizeBy: sum
+		sourceColumn: amount usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'discount usd'
+		dataType: double
+		lineageTag: c8b51bdf-c103-439c-8360-69ec4e163e3b
+		summarizeBy: sum
+		sourceColumn: discount usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'subtotal usd'
+		dataType: double
+		lineageTag: fb506f7d-b261-457f-9be7-dbb0fc5e2d77
+		summarizeBy: sum
+		sourceColumn: subtotal usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'tax usd'
+		dataType: double
+		lineageTag: 3e7f2704-a499-43a9-ab52-bcdc71c899e0
+		summarizeBy: sum
+		sourceColumn: tax usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'total usd'
+		dataType: double
+		lineageTag: 8c0af41b-9b84-4364-abf6-9cad5fcffc53
+		summarizeBy: sum
+		sourceColumn: total usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'invoice status'
+		dataType: string
+		lineageTag: dea948b3-0141-4b07-b431-33f9f50f74d7
+		summarizeBy: none
+		sourceColumn: invoice status
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'payment method'
+		dataType: string
+		lineageTag: 46e30bd3-f182-4206-9614-f5b6746de708
+		summarizeBy: none
+		sourceColumn: payment method
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'days to payment'
+		dataType: int64
+		formatString: 0
+		lineageTag: 1f77a033-5025-454b-a30b-e317cc3f0ec2
+		summarizeBy: sum
+		sourceColumn: days to payment
+
+		annotation SummarizationSetBy = Automatic
+
+	column currency
+		dataType: string
+		lineageTag: 90c1b3f4-dd9a-4b39-8a53-fce050db62d1
+		summarizeBy: none
+		sourceColumn: currency
+
+		annotation SummarizationSetBy = Automatic
+
+	partition invoices = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\csbar\OneDrive\Documents\GitHub\SAAS-Finance-Portfolio\data\raw\invoices.csv"),[Delimiter=",", Columns=17, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"invoice_id", type text}, {"customer_id", type text}, {"subscription_id", type text}, {"billing_period_start", type text}, {"months_covered", Int64.Type}, {"amount_usd", type number}, {"discount_usd", type number}, {"subtotal_usd", type number}, {"tax_usd", type number}, {"total_usd", type number}, {"invoice_status", type text}, {"payment_method", type text}, {"days_to_payment", Int64.Type}, {"currency", type text}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type",{{"amount_usd", "amount usd"}, {"billing_period_end", "billing period end"}, {"billing_period_start", "billing period start"}, {"customer_id", "customer id"}, {"days_to_payment", "days to payment"}, {"discount_usd", "discount usd"}, {"invoice_date", "invoice date"}, {"invoice_id", "invoice id"}, {"invoice_month", "invoice month"}, {"invoice_status", "invoice status"}, {"months_covered", "months covered"}, {"payment_method", "payment method"}, {"subscription_id", "subscription id"}, {"subtotal_usd", "subtotal usd"}, {"tax_usd", "tax usd"}, {"total_usd", "total usd"}}),
+				    #"Changed Type with Locale" = Table.TransformColumnTypes(#"Renamed Columns", {{"invoice date", type date}, {"billing period start", type date}, {"billing period end", type date}}, "en-GB")
+				in
+				    #"Changed Type with Locale"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

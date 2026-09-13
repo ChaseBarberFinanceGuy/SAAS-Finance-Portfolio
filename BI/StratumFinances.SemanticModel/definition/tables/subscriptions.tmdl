@@ -1,0 +1,128 @@
+table subscriptions
+	lineageTag: 32119f2e-8107-4804-867d-06720d33c7e7
+
+	column 'subscription id'
+		dataType: string
+		lineageTag: a5a07b67-0487-4dae-b6ac-60d9ac4c6be0
+		summarizeBy: none
+		sourceColumn: subscription id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'customer id'
+		dataType: string
+		lineageTag: 35cc1c79-99c7-4872-a542-775c6289088e
+		summarizeBy: none
+		sourceColumn: customer id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'plan id'
+		dataType: string
+		lineageTag: aef9ca03-9f42-417b-86fe-554eef8ea2d6
+		summarizeBy: none
+		sourceColumn: plan id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'start date'
+		dataType: string
+		lineageTag: 8add1264-aa9d-4ca4-802f-b2357602172a
+		summarizeBy: none
+		sourceColumn: start date
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'end date'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: d7ecd6fb-4d13-417b-8642-d9d2081e166d
+		summarizeBy: none
+		sourceColumn: end date
+
+		variation Variation
+			isDefault
+			relationship: 34324d43-7d45-4806-90e8-1bb49a60c634
+			defaultHierarchy: LocalDateTable_db73d29a-ba43-4d32-a1e7-e575ace00a9f.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'subscription status'
+		dataType: string
+		lineageTag: f9d61416-d552-4a9a-8ae9-1fd08749ab00
+		summarizeBy: none
+		sourceColumn: subscription status
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'billing interval'
+		dataType: string
+		lineageTag: 5f138e3b-a5fe-4eb5-843f-a71aada1f6b0
+		summarizeBy: none
+		sourceColumn: billing interval
+
+		annotation SummarizationSetBy = Automatic
+
+	column seats
+		dataType: int64
+		formatString: 0
+		lineageTag: d7708609-cf20-4207-9d56-3a5064036fcf
+		summarizeBy: sum
+		sourceColumn: seats
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'discount pct'
+		dataType: int64
+		formatString: 0
+		lineageTag: 3a82cae3-43e1-446e-8629-9456a703afc6
+		summarizeBy: sum
+		sourceColumn: discount pct
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'mrr usd'
+		dataType: double
+		lineageTag: ad0c0a6d-c8e9-4927-a2e8-4f729516e7cb
+		summarizeBy: sum
+		sourceColumn: mrr usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'contract term months'
+		dataType: int64
+		formatString: 0
+		lineageTag: a80ef284-5ac1-4e56-84a4-9ba667e50df4
+		summarizeBy: sum
+		sourceColumn: contract term months
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'auto renew'
+		dataType: string
+		lineageTag: e06ac1f0-5146-48d9-a963-6954f97565bf
+		summarizeBy: none
+		sourceColumn: auto renew
+
+		annotation SummarizationSetBy = Automatic
+
+	partition subscriptions = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\csbar\OneDrive\Documents\GitHub\SAAS-Finance-Portfolio\data\raw\subscriptions.csv"),[Delimiter=",", Columns=12, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"subscription_id", type text}, {"customer_id", type text}, {"plan_id", type text}, {"start_date", type text}, {"end_date", type text}, {"subscription_status", type text}, {"billing_interval", type text}, {"seats", Int64.Type}, {"discount_pct", Int64.Type}, {"mrr_usd", type number}, {"contract_term_months", Int64.Type}, {"auto_renew", type text}}),
+				    #"Changed Type with Locale" = Table.TransformColumnTypes(#"Changed Type", {{"end_date", type date}}, "en-GB"),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type with Locale",{{"auto_renew", "auto renew"}, {"billing_interval", "billing interval"}, {"contract_term_months", "contract term months"}, {"customer_id", "customer id"}, {"discount_pct", "discount pct"}, {"end_date", "end date"}, {"mrr_usd", "mrr usd"}, {"plan_id", "plan id"}, {"start_date", "start date"}, {"subscription_id", "subscription id"}, {"subscription_status", "subscription status"}})
+				in
+				    #"Renamed Columns"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

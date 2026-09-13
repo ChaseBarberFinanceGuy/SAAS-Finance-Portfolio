@@ -1,0 +1,38 @@
+{
+  "version": "0.1.0",
+  "max_flags": 4,
+  "minimum_score": 60,
+  "rules": {
+    "arr_yoy_growth": {
+      "abs_trigger_pct": 0.1,
+      "weight": 1.0
+    },
+    "net_mrr_change": {
+      "abs_trigger_pct": 0.02,
+      "weight": 1.0
+    },
+    "nrr": {
+      "high": 1.1,
+      "low": 1.0,
+      "weight": 1.0
+    },
+    "grr": {
+      "low": 0.9,
+      "yoy_change_ppts": 2.0,
+      "weight": 1.0
+    },
+    "active_customer_yoy": {
+      "abs_trigger_pct": 0.05,
+      "weight": 0.7
+    },
+    "arr_per_account_yoy": {
+      "abs_trigger_pct": 0.05,
+      "weight": 0.7
+    },
+    "top10_concentration": {
+      "high": 0.2,
+      "change_ppts": 2.0,
+      "weight": 0.6
+    }
+  }
+}

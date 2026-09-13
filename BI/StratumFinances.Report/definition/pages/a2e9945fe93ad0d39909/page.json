@@ -1,0 +1,31 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/page/2.1.0/schema.json",
+  "name": "a2e9945fe93ad0d39909",
+  "displayName": "Dashboard",
+  "displayOption": "FitToPage",
+  "height": 1080,
+  "width": 1920,
+  "pageBinding": {
+    "name": "c1be521f06325ae9d4ad",
+    "type": "Default",
+    "parameters": [],
+    "acceptsFilterContext": "None"
+  },
+  "visualInteractions": [
+    {
+      "source": "c72f4ea0ac189b448c0a",
+      "target": "a7fe7e507eca2d38a1bc",
+      "type": "DataFilter"
+    },
+    {
+      "source": "c72f4ea0ac189b448c0a",
+      "target": "844307fe7ddba8e05d90",
+      "type": "NoFilter"
+    },
+    {
+      "source": "e493f1713dcb228503ea",
+      "target": "ffa55a7c5094cd425cd6",
+      "type": "NoFilter"
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+table plans
+	lineageTag: 2661e857-800c-42db-b91e-74a0441db5b6
+
+	column 'plan id'
+		dataType: string
+		lineageTag: a43e576f-16eb-4c20-8637-ca722a8b3a24
+		summarizeBy: none
+		sourceColumn: plan id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'plan name'
+		dataType: string
+		lineageTag: 0f3f9281-fc92-42b8-800d-aea9dbc41a1b
+		summarizeBy: none
+		sourceColumn: plan name
+
+		annotation SummarizationSetBy = Automatic
+
+	column tier
+		dataType: string
+		lineageTag: aa11c30f-8169-4762-9857-881ed170cafd
+		summarizeBy: none
+		sourceColumn: tier
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'billing interval'
+		dataType: string
+		lineageTag: 1773c08f-ac4a-49da-b21e-6a2bc689a788
+		summarizeBy: none
+		sourceColumn: billing interval
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'list price usd'
+		dataType: double
+		formatString: 0
+		lineageTag: 3c82cd82-9cc9-4b2c-af85-8b97d3fcda4e
+		summarizeBy: sum
+		sourceColumn: list price usd
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'monthly price usd'
+		dataType: double
+		lineageTag: 78787423-905d-4135-b36d-10f6f3958307
+		summarizeBy: sum
+		sourceColumn: monthly price usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'billing months'
+		dataType: int64
+		formatString: 0
+		lineageTag: becc9ab1-603a-4600-b614-e5f655ca238a
+		summarizeBy: sum
+		sourceColumn: billing months
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'seats included'
+		dataType: int64
+		formatString: 0
+		lineageTag: 45618d89-c8ad-4d26-938e-1d2746469a31
+		summarizeBy: sum
+		sourceColumn: seats included
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'extra seat price usd'
+		dataType: double
+		formatString: 0
+		lineageTag: 58f4e358-b2ed-4eb8-af40-c404d624a9b7
+		summarizeBy: sum
+		sourceColumn: extra seat price usd
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'is active'
+		dataType: string
+		lineageTag: 2a58c2b4-fe85-4559-8da4-d2e17687af31
+		summarizeBy: none
+		sourceColumn: is active
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'launched date'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 001c7d1c-b708-4184-afc2-253f5379063c
+		summarizeBy: none
+		sourceColumn: launched date
+
+		variation Variation
+			isDefault
+			relationship: 6e2b7fc3-6353-4b12-96d0-eadcab81dcd7
+			defaultHierarchy: LocalDateTable_92a3592a-85fd-4b95-8d19-403cda508730.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition plans = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\csbar\OneDrive\Documents\GitHub\SAAS-Finance-Portfolio\data\raw\plans.csv"),[Delimiter=",", Columns=11, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type with Locale" = Table.TransformColumnTypes(#"Promoted Headers", {{"launched_date", type date}}, "en-GB"),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Changed Type with Locale",{{"list_price_usd", type number}, {"monthly_price_usd", type number}, {"extra_seat_price_usd", type number}, {"billing_months", Int64.Type}, {"seats_included", Int64.Type}}),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type",{{"billing_interval", "billing interval"}, {"billing_months", "billing months"}, {"extra_seat_price_usd", "extra seat price usd"}, {"is_active", "is active"}, {"launched_date", "launched date"}, {"list_price_usd", "list price usd"}, {"monthly_price_usd", "monthly price usd"}, {"plan_id", "plan id"}, {"plan_name", "plan name"}, {"seats_included", "seats included"}})
+				in
+				    #"Renamed Columns"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

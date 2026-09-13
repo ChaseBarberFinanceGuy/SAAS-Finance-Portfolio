@@ -1,0 +1,810 @@
+table 'Finance Metrics'
+	lineageTag: 39ad4cf9-7dd9-4029-ae5d-ba40f6ec25ca
+
+	/// Point-in-time monthly recurring run rate at the selected month end. MRR is a recurring run-
+	/// rate metric. In this synthetic dataset the monthly ledger also reconciles to subscription
+	/// revenue, but keep the MRR label for this KPI.
+	measure 'Ending MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        SUM('subscription months'[mrr usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth
+				    )
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 01 Scale
+		lineageTag: 025b3798-bf9e-4b1e-b7e5-0d9befbc2902
+
+	/// Annualized point-in-time recurring run rate at the selected month end. This is the standard
+	/// point-in-time ARR metric.
+	measure 'Current ARR' = ```
+				[Ending MRR] * 12
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 01 Scale
+		lineageTag: 92b25dd2-bd4c-4871-84dd-6c18f4b44242
+
+	/// Average of the 12 month-end ARR observations ending in the selected month. This is a
+	/// portfolio-specific management metric, not the standard SaaS definition of ARR. The Copilot
+	/// may accept 'TTM ARR' as an alias, but should label the output 'Average ARR - TTM'.
+	measure 'Average ARR - TTM' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR StartMonth = EDATE(AsOfMonth, -11)
+				VAR EarliestDataMonth =
+				    CALCULATE(
+				        MIN('subscription months'[month start date]),
+				        REMOVEFILTERS()
+				    )
+				VAR MonthOffsets = GENERATESERIES(0, 11, 1)
+				RETURN
+				    IF(
+				        StartMonth < EarliestDataMonth,
+				        BLANK(),
+				        AVERAGEX(
+				            MonthOffsets,
+				            VAR ThisMonth = EDATE(AsOfMonth, -[Value])
+				            VAR ThisMRR =
+				                CALCULATE(
+				                    SUM('subscription months'[mrr usd]),
+				                    REMOVEFILTERS('Calendar'),
+				                    'subscription months'[month start date] = ThisMonth
+				                )
+				            RETURN
+				                COALESCE(ThisMRR, 0) * 12
+				        )
+				    )
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 01 Scale
+		lineageTag: b972e41e-b6b1-45bc-a837-a13696d0084b
+
+	/// Percentage change in Current ARR versus the same month 12 months earlier. Requires a
+	/// comparable month 12 months earlier.
+	measure 'ARR Growth YoY' =
+			VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR PriorMonth = EDATE(AsOfMonth, -12)
+				VAR CurrentMRR =
+				    CALCULATE(
+				        SUM('subscription months'[mrr usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth
+				    )
+				VAR PriorMRR =
+				    CALCULATE(
+				        SUM('subscription months'[mrr usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = PriorMonth
+				    )
+				RETURN
+				    IF(
+				        ISBLANK(PriorMRR),
+				        BLANK(),
+				        DIVIDE(CurrentMRR - PriorMRR, PriorMRR)
+				    )
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 02 Growth
+		lineageTag: 01ba12a4-b714-409f-8a20-8628d6e22c7d
+
+	/// Recurring revenue added during the selected month for rows classified as New by
+	/// subscription months.movement type. Uses the source movement classification directly.
+	measure 'New MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        SUM('subscription months'[mrr delta usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[movement type] = "New"
+				    )
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 03 ARR Movement
+		lineageTag: ffd0e34f-93ac-4322-866e-8e3295b2d3b4
+
+	/// Recurring revenue added during the selected month for rows classified as Expansion by
+	/// subscription months.movement type. Uses the source movement classification directly.
+	measure 'Expansion MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        SUM('subscription months'[mrr delta usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[movement type] = "Expansion"
+				    )
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 03 ARR Movement
+		lineageTag: 9b4142ea-9878-4cb2-9929-cfdce59267e1
+
+	/// Recurring revenue added during the selected month for rows classified as Reactivation by
+	/// subscription months.movement type. Uses the source movement classification directly.
+	measure 'Reactivation MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        SUM('subscription months'[mrr delta usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[movement type] = "Reactivation"
+				    )
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 03 ARR Movement
+		lineageTag: dbc76e76-f41f-48f1-b850-5646f95976a4
+
+	/// Recurring revenue lost during the selected month for rows classified as Contraction by
+	/// subscription months.movement type. Displayed as a positive loss amount; raw mrr_delta_usd is
+	/// negative.
+	measure 'Contraction MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR RawValue =
+				    CALCULATE(
+				        SUM('subscription months'[mrr delta usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[movement type] = "Contraction"
+				    )
+				RETURN
+				    ABS(COALESCE(RawValue, 0))
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 03 ARR Movement
+		lineageTag: a7607429-1013-4a1a-a0f0-7f0bbf58a7bc
+
+	/// Recurring revenue lost during the selected month for rows classified as Churn by
+	/// subscription months.movement type. Displayed as a positive loss amount; raw mrr_delta_usd is
+	/// negative.
+	measure 'Churned MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR RawValue =
+				    CALCULATE(
+				        SUM('subscription months'[mrr delta usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[movement type] = "Churn"
+				    )
+				RETURN
+				    ABS(COALESCE(RawValue, 0))
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 03 ARR Movement
+		lineageTag: 87366549-a404-4971-9a28-cd421160d53d
+
+	/// Distinct customer accounts with positive MRR at the selected month end. The supplied ledger
+	/// is verified as one row per customer per period_month, so customer counts do not double count
+	/// subscriptions.
+	measure 'Active Customers' =
+			VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        DISTINCTCOUNT('subscription months'[customer id]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+		formatString: #,0
+		displayFolder: 04 Customers
+		lineageTag: 538fd4ab-0617-400d-a2ea-d213a8c3e2d7
+
+	/// Ending MRR divided by active customer accounts at the selected month end. ARPA-style
+	/// recurring-revenue metric; not average invoice value.
+	measure 'Average MRR per Active Account' = ```
+				DIVIDE([Ending MRR], [Active Customers])
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 04 Customers
+		lineageTag: 47c4d424-2d71-434e-a5d5-adca5167e710
+
+	/// Current ARR divided by active customer accounts at the selected month end. Annualized
+	/// recurring run rate per active account.
+	measure 'Average ARR per Active Account' = ```
+				DIVIDE([Current ARR], [Active Customers])
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 04 Customers
+		lineageTag: 608ec0b6-709a-4c11-8e51-2fde43c2ad05
+
+	/// Ending MRR from the accounts active 12 months earlier divided by those accounts' beginning
+	/// MRR; new accounts after the beginning date are excluded. Can exceed 100% because expansion
+	/// among the beginning cohort is included.
+	measure 'Net Revenue Retention - 12M' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR EndMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR StartMonth = EDATE(EndMonth, -12)
+				VAR BeginningCohort =
+				    CALCULATETABLE(
+				        SUMMARIZE(
+				            'subscription months',
+				            'subscription months'[customer id],
+				            "BeginMRR", SUM('subscription months'[mrr usd])
+				        ),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = StartMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR BeginningMRR = SUMX(BeginningCohort, [BeginMRR])
+				VAR EndingMRR =
+				    SUMX(
+				        BeginningCohort,
+				        VAR CustomerID = [customer id]
+				        RETURN
+				            COALESCE(
+				                CALCULATE(
+				                    SUM('subscription months'[mrr usd]),
+				                    REMOVEFILTERS('Calendar'),
+				                    'subscription months'[month start date] = EndMonth,
+				                    'subscription months'[customer id] = CustomerID
+				                ),
+				                0
+				            )
+				    )
+				RETURN
+				    IF(BeginningMRR > 0, DIVIDE(EndingMRR, BeginningMRR))
+			```
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 05 Retention
+		lineageTag: e0bddd0e-da6f-448d-a030-8a2d6ba3bb4a
+
+	/// Recurring revenue retained after 12 months from the beginning account cohort, excluding
+	/// expansion. Capped at 100% by construction; expansion is excluded.
+	measure 'Gross Revenue Retention - 12M' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR EndMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR StartMonth = EDATE(EndMonth, -12)
+				VAR BeginningCohort =
+				    CALCULATETABLE(
+				        SUMMARIZE(
+				            'subscription months',
+				            'subscription months'[customer id],
+				            "BeginMRR", SUM('subscription months'[mrr usd])
+				        ),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = StartMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR BeginningMRR = SUMX(BeginningCohort, [BeginMRR])
+				VAR RetainedMRR =
+				    SUMX(
+				        BeginningCohort,
+				        VAR CustomerID = [customer id]
+				        VAR BeginMRR = [BeginMRR]
+				        VAR EndMRR =
+				            COALESCE(
+				                CALCULATE(
+				                    SUM('subscription months'[mrr usd]),
+				                    REMOVEFILTERS('Calendar'),
+				                    'subscription months'[month start date] = EndMonth,
+				                    'subscription months'[customer id] = CustomerID
+				                ),
+				                0
+				            )
+				        RETURN
+				            MIN(BeginMRR, EndMRR)
+				    )
+				RETURN
+				    IF(BeginningMRR > 0, DIVIDE(RetainedMRR, BeginningMRR))
+			```
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 05 Retention
+		lineageTag: b80518e6-b9e7-4785-a6f0-3149f22b7ea5
+
+	/// Share of accounts active 12 months earlier that still have positive MRR at the selected
+	/// month end. Account-count retention; customers are not weighted by ARR.
+	measure 'Logo Retention - 12M' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR EndMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR StartMonth = EDATE(EndMonth, -12)
+				VAR BeginningCohort =
+				    CALCULATETABLE(
+				        VALUES('subscription months'[customer id]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = StartMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR BeginningLogos = COUNTROWS(BeginningCohort)
+				VAR RetainedLogos =
+				    SUMX(
+				        BeginningCohort,
+				        VAR CustomerID = 'subscription months'[customer id]
+				        VAR EndMRR =
+				            COALESCE(
+				                CALCULATE(
+				                    SUM('subscription months'[mrr usd]),
+				                    REMOVEFILTERS('Calendar'),
+				                    'subscription months'[month start date] = EndMonth,
+				                    'subscription months'[customer id] = CustomerID
+				                ),
+				                0
+				            )
+				        RETURN
+				            IF(EndMRR > 0, 1, 0)
+				    )
+				RETURN
+				    IF(BeginningLogos > 0, DIVIDE(RetainedLogos, BeginningLogos))
+			```
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 05 Retention
+		lineageTag: 35046d14-f4e9-4fc4-be62-1df94ac0f399
+
+	/// Share of accounts active 12 months earlier that no longer have positive MRR at the selected
+	/// month end. Customer-count churn; distinct from Churned MRR.
+	measure 'Logo Churn - 12M' = ```
+				VAR Retention = [Logo Retention - 12M]
+				RETURN
+				    IF(NOT ISBLANK(Retention), 1 - Retention)
+			```
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 05 Retention
+		lineageTag: 76e0399e-d707-43d1-972c-37a716f749e0
+
+	/// Share of Current ARR attributable to the 5 largest customer accounts at the selected month
+	/// end. Customer/account grain is used before ranking.
+	measure 'Top 5 ARR Concentration' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR CustomerMRR =
+				    CALCULATETABLE(
+				        SUMMARIZE(
+				            'subscription months',
+				            'subscription months'[customer id],
+				            "CustomerMRR", SUM('subscription months'[mrr usd])
+				        ),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR TotalMRR = SUMX(CustomerMRR, [CustomerMRR])
+				VAR TopMRR =
+				    SUMX(
+				        TOPN(5, CustomerMRR, [CustomerMRR], DESC),
+				        [CustomerMRR]
+				    )
+				RETURN
+				    DIVIDE(TopMRR, TotalMRR)
+			```
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 06 Concentration
+		lineageTag: e97770dd-63cc-4d2e-b566-fa1ca2840e28
+
+	/// Share of Current ARR attributable to the 10 largest customer accounts at the selected month
+	/// end. Customer/account grain is used before ranking.
+	measure 'Top 10 ARR Concentration' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR CustomerMRR =
+				    CALCULATETABLE(
+				        SUMMARIZE(
+				            'subscription months',
+				            'subscription months'[customer id],
+				            "CustomerMRR", SUM('subscription months'[mrr usd])
+				        ),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR TotalMRR = SUMX(CustomerMRR, [CustomerMRR])
+				VAR TopMRR =
+				    SUMX(
+				        TOPN(10, CustomerMRR, [CustomerMRR], DESC),
+				        [CustomerMRR]
+				    )
+				RETURN
+				    DIVIDE(TopMRR, TotalMRR)
+			```
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 06 Concentration
+		lineageTag: 3a5891eb-8f17-4e67-90ea-2e8e2bb3f4dd
+
+	/// Share of Current ARR attributable to the 20 largest customer accounts at the selected month
+	/// end. Customer/account grain is used before ranking.
+	measure 'Top 20 ARR Concentration' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR CustomerMRR =
+				    CALCULATETABLE(
+				        SUMMARIZE(
+				            'subscription months',
+				            'subscription months'[customer id],
+				            "CustomerMRR", SUM('subscription months'[mrr usd])
+				        ),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR TotalMRR = SUMX(CustomerMRR, [CustomerMRR])
+				VAR TopMRR =
+				    SUMX(
+				        TOPN(20, CustomerMRR, [CustomerMRR], DESC),
+				        [CustomerMRR]
+				    )
+				RETURN
+				    DIVIDE(TopMRR, TotalMRR)
+			```
+		formatString: 0.0%;-0.0%;0.0%
+		displayFolder: 06 Concentration
+		lineageTag: 5f8e0494-772b-4aaf-b9b6-97325dfbf54f
+
+	/// Net invoice value issued in the selected invoice month before tax. Uses subtotal_usd
+	/// (amount_usd less discount_usd, before tax). This is invoice-date billings and can be lumpy
+	/// for annual/multi-month invoices. Refund/failed/overdue policy can be added as separate
+	/// collection metrics.
+	measure 'Monthly Billings / Net Invoice Value' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        SUM('invoices'[subtotal usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'invoices'[invoice month] = AsOfMonth
+				    )
+			```
+		formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+		displayFolder: 07 Billings
+		lineageTag: 7e5c6dba-25e4-4f97-9fe1-65ea4c5b60f0
+
+	measure 'Prior Month Ending MRR' =
+			
+			VAR AsOfDate =
+			    MAX('Calendar'[Date])
+			VAR AsOfMonth =
+			    DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+			VAR PriorMonth =
+			    EDATE(AsOfMonth, -1)
+			RETURN
+			    CALCULATE(
+			        SUM('subscription months'[mrr usd]),
+			        REMOVEFILTERS('Calendar'),
+			        'subscription months'[month start date] = PriorMonth
+			    )
+		displayFolder: 01 Scale
+		lineageTag: a5e005d0-6f8d-4197-bb52-6190b362db97
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Net MRR Change' = ```
+			
+			    [New MRR]
+			    + [Expansion MRR]
+			    + [Reactivation MRR]
+			    - [Contraction MRR]
+			    - [Churned MRR]
+			```
+		displayFolder: 01 Scale
+		lineageTag: 56f9b73f-75ad-48b2-902b-bc4bacf21f9e
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'MRR Bridge Variance' = ```
+			
+			    [Prior Month Ending MRR]
+			    + [Net MRR Change]
+			    - [Ending MRR]
+			```
+		displayFolder: 01 Scale
+		lineageTag: fbc00bdf-08af-4f3c-bf41-6fbb1f21eb85
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'ARR YoY Display' =
+			
+			VAR Change = [ARR Growth YoY]
+			RETURN
+			SWITCH(
+			    TRUE(),
+			    ISBLANK(Change), BLANK(),
+			    Change > 0, "▲ " & FORMAT(Change, "0.0%"),
+			    Change < 0, "▼ " & FORMAT(ABS(Change), "0.0%"),
+			    "— " & FORMAT(Change, "0.0%")
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 12b42f0a-989b-4861-84b6-ebb7f5440838
+
+	measure 'GRR YoY Change Ppts' =
+			
+			([Gross Revenue Retention - 12M] - [GRR Prior Year]) * 100
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: a61577ac-57a9-4447-9eff-093caeca1b42
+
+	measure 'GRR Prior Year' =
+			
+			VAR AsOfDate =
+			    MAX('Calendar'[Date])
+			VAR PriorYearDate =
+			    EDATE(AsOfDate, -12)
+			RETURN
+			    CALCULATE(
+			        [Gross Revenue Retention - 12M],
+			        REMOVEFILTERS('Calendar'),
+			        'Calendar'[Date] = PriorYearDate
+			    )
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: cc73dab3-6db4-44be-825f-3b4002b9ed06
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'GRR YoY Display' =
+			
+			VAR Change = [GRR YoY Change Ppts]
+			RETURN
+			SWITCH(
+			    TRUE(),
+			    ISBLANK(Change), BLANK(),
+			    Change > 0, "▲ " & FORMAT(Change, "0.0") & " ppts",
+			    Change < 0, "▼ " & FORMAT(ABS(Change), "0.0") & " ppts",
+			    "— 0.0 ppts"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 95316e8f-dd03-4086-9c9a-cd39f7684ba1
+
+	measure 'ARR Prior Year' =
+			
+			VAR AsOfDate =
+			    MAX('Calendar'[Date])
+			VAR PriorYearDate =
+			    EDATE(AsOfDate, -12)
+			RETURN
+			    CALCULATE(
+			        [ARR Growth YoY],
+			        REMOVEFILTERS('Calendar'),
+			        'Calendar'[Date] = PriorYearDate
+			    )
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 325e382c-f2ff-48aa-862e-a7d25386919a
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'ARR YoY Change Ppts' =
+			
+			([ARR Growth YoY] - [ARR Prior Year]) * 100
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 0aeea13a-fcb4-4445-904f-c69b77947d67
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'ARR YoY Change Ppts Display' =
+			
+			VAR Change = [ARR YoY Change Ppts]
+			RETURN
+			SWITCH(
+			    TRUE(),
+			    ISBLANK(Change), BLANK(),
+			    Change > 0, "▲ " & FORMAT(Change, "0.0") & " ppts",
+			    Change < 0, "▼ " & FORMAT(ABS(Change), "0.0") & " ppts",
+			    "— 0.0 ppts"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 68b5810e-d047-479a-b095-c81654c98773
+
+	measure 'vs. prior year' = "vs. prior year"
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: ffe35325-68ca-4a25-b9ce-827b5f7b9dcd
+
+	measure 'NRR Prior Year' =
+			
+			VAR AsOfDate =
+			    MAX('Calendar'[Date])
+			VAR PriorYearDate =
+			    EDATE(AsOfDate, -12)
+			RETURN
+			    CALCULATE(
+			        [Net Revenue Retention - 12M],
+			        REMOVEFILTERS('Calendar'),
+			        'Calendar'[Date] = PriorYearDate
+			    )
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: f7b5f2cc-767d-498f-8f78-f238225eeaef
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'NRR YoY Change Ppts' =
+			
+			([Net Revenue Retention - 12M] - [NRR Prior Year]) * 100
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: fff3cca6-e036-4bff-a28d-6e35cd6d558a
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'NRR YoY Display' =
+			
+			VAR Change = [NRR YoY Change Ppts]
+			RETURN
+			SWITCH(
+			    TRUE(),
+			    ISBLANK(Change), BLANK(),
+			    Change > 0, "▲ " & FORMAT(Change, "0.0") & " ppts",
+			    Change < 0, "▼ " & FORMAT(ABS(Change), "0.0") & " ppts",
+			    "— 0.0 ppts"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 0a3423a3-fb2d-403f-b2cd-7861222652ce
+
+	measure 'ARR Growth YoY Change Color' =
+			
+			IF(
+			    [ARR YoY Change Ppts] >= 0,
+			    "#62A875",
+			    "#D97878"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 67d1100f-d49a-45df-8aea-32ce40bd8d1d
+
+	measure 'Current ARR Change Color' =
+			
+			IF(
+			    [ARR Growth YoY] >= 0,
+			    "#62A875",
+			    "#D97878"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 9990137c-951b-47f6-bb21-389c56cbfdd6
+
+	measure 'NRR YoY Change Color' =
+			
+			IF(
+			    [NRR YoY Change Ppts] >= 0,
+			    "#62A875",
+			    "#D97878"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: d823b9b2-5563-41d1-a176-c4f7a315f234
+
+	measure 'GRR YoY Change Color' =
+			
+			IF(
+			    [GRR YoY Change Ppts] >= 0,
+			    "#62A875",
+			    "#D97878"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 62c3565d-b9cf-427c-9f3b-a6e59b7a9fd6
+
+	measure 'Active Customer Growth YoY' =
+			
+			VAR CurrentCustomers = [Active Customers]
+			VAR PriorCustomers = [Active Customers Prior Year]
+			RETURN
+			    IF(
+			        ISBLANK(PriorCustomers),
+			        BLANK(),
+			        DIVIDE(
+			            CurrentCustomers - PriorCustomers,
+			            PriorCustomers
+			        )
+			    )
+		formatString: 0
+		displayFolder: 02 Growth
+		lineageTag: 03d536d1-07da-4ea5-90ac-cb140aaa5a03
+
+	measure 'Active Customers Prior Year' =
+			
+			VAR AsOfDate =
+			    MAX('Calendar'[Date])
+			VAR AsOfMonth =
+			    DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+			VAR PriorYearMonth =
+			    EDATE(AsOfMonth, -12)
+			RETURN
+			    CALCULATE(
+			        DISTINCTCOUNT('subscription months'[customer id]),
+			        REMOVEFILTERS('Calendar'),
+			        'subscription months'[month start date] = PriorYearMonth,
+			        'subscription months'[mrr usd] > 0
+			    )
+		formatString: 0
+		displayFolder: 02 Growth
+		lineageTag: 3e5a934e-dca2-46a2-9112-c0168654c09a
+
+	measure 'Active Customer Growth YoY Display' =
+			
+			VAR Change = [Active Customer Growth YoY]
+			RETURN
+			SWITCH(
+			    TRUE(),
+			    ISBLANK(Change), BLANK(),
+			    Change > 0, "▲ " & FORMAT(Change, "0.0%"),
+			    Change < 0, "▼ " & FORMAT(ABS(Change), "0.0%"),
+			    "— 0.0%"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: ae8f3e10-6386-4a70-8570-2c46a97946fb
+
+	measure 'Active Customer Growth YoY Color' =
+			
+			IF(
+			    [Active Customer Growth YoY] >= 0,
+			    "#62A875",
+			    "#D97878"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: e8a9609a-d489-4259-aa86-606380609c76
+
+	measure 'Average ARR per Active Account Prior Year' =
+			
+			VAR AsOfDate =
+			    MAX('Calendar'[Date])
+			VAR AsOfMonth =
+			    DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+			VAR PriorYearMonth =
+			    EDATE(AsOfMonth, -12)
+			RETURN
+			    CALCULATE(
+			        [Average ARR per Active Account],
+			        REMOVEFILTERS('Calendar'),
+			        'Calendar'[Date] = PriorYearMonth
+			    )
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: dab5df4f-3f6d-4a14-8512-6ac9226e4eb0
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Average ARR per Active Account Growth YoY' =
+			
+			VAR CurrentValue = [Average ARR per Active Account]
+			VAR PriorValue = [Average ARR per Active Account Prior Year]
+			RETURN
+			    IF(
+			        ISBLANK(PriorValue),
+			        BLANK(),
+			        DIVIDE(CurrentValue - PriorValue, PriorValue)
+			    )
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 7a14eb99-24c9-46ef-8d8c-c7bfd7315727
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	measure 'Average ARR per Active Account Growth YoY Color' =
+			
+			IF(
+			    [Average ARR per Active Account Growth YoY] >= 0,
+			    "#62A875",
+			    "#D97878"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: 0c0c6121-a07e-4c67-9a62-aa203cabde5e
+
+	measure 'Average ARR per Active Account Growth YoY Display' =
+			
+			VAR Change = [Average ARR per Active Account Growth YoY]
+			RETURN
+			SWITCH(
+			    TRUE(),
+			    ISBLANK(Change), BLANK(),
+			    Change > 0, "▲ " & FORMAT(Change, "0.0%"),
+			    Change < 0, "▼ " & FORMAT(ABS(Change), "0.0%"),
+			    "— 0.0%"
+			)
+		displayFolder: 08 Card INCR/DECR
+		lineageTag: cbab1670-a966-41e6-b6c3-49730e5f2c9a
+
+	column Placeholder
+		isHidden
+		lineageTag: c194c7f3-be97-401c-b61d-fa029d79e62a
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Placeholder]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Finance Metrics' = calculated
+		mode: import
+		source =
+				
+				DATATABLE(
+				    "Placeholder", STRING,
+				    { { "Measures" } }
+				)
+
+	annotation PBI_Id = 3bc901fc52bf42ceb5419916d458f048
+

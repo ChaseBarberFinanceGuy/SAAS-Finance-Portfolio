@@ -1,0 +1,166 @@
+table 'subscription months'
+	lineageTag: 15243b44-615f-4e2b-9b3b-0b34e2f34402
+
+	column 'record id'
+		dataType: string
+		lineageTag: 6b0f136a-f56d-4822-8cb4-bb5f5ed445b4
+		summarizeBy: none
+		sourceColumn: record id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'customer id'
+		dataType: string
+		lineageTag: 9af8dc35-2f65-477c-9f2f-5dfaa3f7f858
+		summarizeBy: none
+		sourceColumn: customer id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'subscription id'
+		dataType: string
+		lineageTag: ed2e4f59-cef1-4801-aa62-5fcc597b812d
+		summarizeBy: none
+		sourceColumn: subscription id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'plan id'
+		dataType: string
+		lineageTag: ef10bac2-be40-4364-9369-26c487febb86
+		summarizeBy: none
+		sourceColumn: plan id
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'period month'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 57c3a25d-4793-4cd6-adb3-3324c9b09abf
+		summarizeBy: none
+		sourceColumn: period month
+
+		variation Variation
+			isDefault
+			relationship: 55a6654e-6582-458f-9b53-bb80a39566f4
+			defaultHierarchy: LocalDateTable_eeadd8a6-b4b9-4d8a-a9d8-ba2918a9491f.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'month start date'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 425c313c-8582-4a9d-8838-25d7fb976038
+		summarizeBy: none
+		sourceColumn: month start date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'is active'
+		dataType: string
+		lineageTag: 80bb1d4c-7579-4b1f-88b9-91695c9fe910
+		summarizeBy: none
+		sourceColumn: is active
+
+		annotation SummarizationSetBy = Automatic
+
+	column seats
+		dataType: int64
+		formatString: 0
+		lineageTag: a072d5ec-d95a-4665-8304-b3a41fd277a7
+		summarizeBy: sum
+		sourceColumn: seats
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'mrr usd'
+		dataType: double
+		lineageTag: 2f9a81ed-b587-4411-be0d-4a129baab80e
+		summarizeBy: sum
+		sourceColumn: mrr usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'previous mrr usd'
+		dataType: double
+		lineageTag: 2c4a8cc1-eaaf-4cb7-8941-88017bfdb78d
+		summarizeBy: sum
+		sourceColumn: previous mrr usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'mrr delta usd'
+		dataType: double
+		lineageTag: de2c385a-e8de-461d-b1ce-2e8fa88a1669
+		summarizeBy: sum
+		sourceColumn: mrr delta usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column 'movement type'
+		dataType: string
+		lineageTag: 77e28227-f327-4257-8c5c-17220fba0fe2
+		summarizeBy: none
+		sourceColumn: movement type
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'tenure months'
+		dataType: int64
+		formatString: 0
+		lineageTag: a2bd5058-6023-4450-96f8-e067f12f3c16
+		summarizeBy: sum
+		sourceColumn: tenure months
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'cohort month'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 460a9bd9-62ef-41ae-9771-c1064af32b44
+		summarizeBy: none
+		sourceColumn: cohort month
+
+		variation Variation
+			isDefault
+			relationship: c59982ba-ce80-4f24-afb4-756fb3763415
+			defaultHierarchy: LocalDateTable_fd22ac03-9044-47a0-813b-fe4828122fdd.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column currency
+		dataType: string
+		lineageTag: f6c0d59c-eb4a-430f-ba02-436035640a56
+		summarizeBy: none
+		sourceColumn: currency
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'subscription months' = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\csbar\OneDrive\Documents\GitHub\SAAS-Finance-Portfolio\data\raw\subscription_months.csv"),[Delimiter=",", Columns=15, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"record_id", type text}, {"customer_id", type text}, {"subscription_id", type text}, {"plan_id", type text}, {"is_active", type text}, {"seats", Int64.Type}, {"mrr_usd", type number}, {"previous_mrr_usd", type number}, {"mrr_delta_usd", type number}, {"movement_type", type text}, {"tenure_months", Int64.Type}, {"currency", type text}}),
+				    #"Changed Type with Locale" = Table.TransformColumnTypes(#"Changed Type", {{"period_month", type date}, {"month_start_date", type date}, {"cohort_month", type date}}, "en-GB"),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type with Locale",{{"cohort_month", "cohort month"}, {"customer_id", "customer id"}, {"is_active", "is active"}, {"month_start_date", "month start date"}, {"movement_type", "movement type"}, {"mrr_delta_usd", "mrr delta usd"}, {"mrr_usd", "mrr usd"}, {"period_month", "period month"}, {"plan_id", "plan id"}, {"previous_mrr_usd", "previous mrr usd"}, {"record_id", "record id"}, {"subscription_id", "subscription id"}, {"tenure_months", "tenure months"}})
+				in
+				    #"Renamed Columns"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

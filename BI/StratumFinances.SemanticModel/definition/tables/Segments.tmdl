@@ -1,0 +1,49 @@
+table Segments
+	lineageTag: 01a6fd37-30ac-43ba-9ea9-d00f1978a817
+
+	column Segments
+		lineageTag: 26f11c06-c320-4517-827a-7b066c24876c
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'Segments Order'
+
+		relatedColumnDetails
+			groupByColumn: 'Segments Fields'
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Segments Fields'
+		isHidden
+		lineageTag: 52e14013-8686-409e-b177-6a080d3c8505
+		summarizeBy: none
+		sourceColumn: [Value2]
+		sortByColumn: 'Segments Order'
+
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Segments Order'
+		isHidden
+		formatString: 0
+		lineageTag: 2bf4710a-4208-40c5-b357-79877364732f
+		summarizeBy: sum
+		sourceColumn: [Value3]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Segments = calculated
+		mode: import
+		source =
+				{
+				    ("tier", NAMEOF('plans'[tier]), 0),
+				    ("segment", NAMEOF('customers'[segment]), 1),
+				    ("region", NAMEOF('customers'[region]), 2)
+				}
+
+	annotation PBI_Id = c5b5705c0c3e424885d1944f8ce7165e
+

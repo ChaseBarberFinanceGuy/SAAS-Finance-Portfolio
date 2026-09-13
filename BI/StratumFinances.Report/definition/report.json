@@ -1,0 +1,108 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/report/3.3.0/schema.json",
+  "themeCollection": {
+    "baseTheme": {
+      "name": "Fluent2-CY26SU08",
+      "reportVersionAtImport": {
+        "visual": "2.12.0",
+        "report": "3.4.0",
+        "page": "2.3.1"
+      },
+      "type": "SharedResources"
+    },
+    "customTheme": {
+      "name": "Stratum_Finance036856519752175076.json",
+      "reportVersionAtImport": {
+        "visual": "2.12.0",
+        "report": "3.4.0",
+        "page": "2.3.1"
+      },
+      "type": "RegisteredResources"
+    }
+  },
+  "objects": {
+    "section": [
+      {
+        "properties": {
+          "verticalAlignment": {
+            "expr": {
+              "Literal": {
+                "Value": "'Top'"
+              }
+            }
+          }
+        }
+      }
+    ],
+    "outspacePane": [
+      {
+        "properties": {
+          "expanded": {
+            "expr": {
+              "Literal": {
+                "Value": "false"
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "resourcePackages": [
+    {
+      "name": "SharedResources",
+      "type": "SharedResources",
+      "items": [
+        {
+          "name": "Fluent2-CY26SU08",
+          "path": "BaseThemes/Fluent2-CY26SU08.json",
+          "type": "BaseTheme"
+        }
+      ]
+    },
+    {
+      "name": "RegisteredResources",
+      "type": "RegisteredResources",
+      "items": [
+        {
+          "name": "noun_chart_5214953_@7004521485070564213.png",
+          "path": "noun_chart_5214953_@7004521485070564213.png",
+          "type": "Image"
+        },
+        {
+          "name": "noun_dollar_8198056_@700378462068067128.png",
+          "path": "noun_dollar_8198056_@700378462068067128.png",
+          "type": "Image"
+        },
+        {
+          "name": "noun_growth_8478103_@7003318365805726615.png",
+          "path": "noun_growth_8478103_@7003318365805726615.png",
+          "type": "Image"
+        },
+        {
+          "name": "noun_people_8434356_@7009432599616855829.png",
+          "path": "noun_people_8434356_@7009432599616855829.png",
+          "type": "Image"
+        },
+        {
+          "name": "noun_Shield_8399889_@7008320905466699338.png",
+          "path": "noun_Shield_8399889_@7008320905466699338.png",
+          "type": "Image"
+        },
+        {
+          "name": "Stratum_Finance036856519752175076.json",
+          "path": "Stratum_Finance036856519752175076.json",
+          "type": "CustomTheme"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "useStylableVisualContainerHeader": true,
+    "exportDataMode": "AllowSummarized",
+    "defaultDrillFilterOtherVisuals": true,
+    "allowChangeFilterTypes": true,
+    "useEnhancedTooltips": true,
+    "useDefaultAggregateDisplayName": true
+  }
+}

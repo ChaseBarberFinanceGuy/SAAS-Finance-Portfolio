@@ -1,0 +1,45 @@
+{
+  "name": "Stratum Finance",
+  "dataColors": [
+    "#1F4E79",
+    "#3B82F6",
+    "#62A875",
+    "#D97878",
+    "#667085",
+    "#98A2B3",
+    "#344054",
+    "#7F56D9"
+  ],
+  "good": "#62A875",
+  "neutral": "#667085",
+  "bad": "#D97878",
+  "background": "#FFFFFF",
+  "firstLevelElements": "#172033",
+  "secondLevelElements": "#667085",
+  "thirdLevelElements": "#E4E7EC",
+  "fourthLevelElements": "#98A2B3",
+  "secondaryBackground": "#F5F7FA",
+  "tableAccent": "#1F4E79",
+  "textClasses": {
+    "callout": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 28,
+      "color": "#172033"
+    },
+    "title": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12,
+      "color": "#172033"
+    },
+    "header": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 12,
+      "color": "#172033"
+    },
+    "label": {
+      "fontFace": "Segoe UI",
+      "fontSize": 10,
+      "color": "#172033"
+    }
+  }
+}

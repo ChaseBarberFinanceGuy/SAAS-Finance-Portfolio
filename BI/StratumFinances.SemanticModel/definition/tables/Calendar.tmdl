@@ -1,0 +1,103 @@
+table Calendar
+	lineageTag: f1d21e88-a807-4973-8105-a60b03597083
+	dataCategory: Time
+
+	column Date
+		isKey
+		formatString: General Date
+		lineageTag: 830a2fc1-46f0-49c9-ad75-fb04a24cf3eb
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Date]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Year
+		formatString: 0
+		lineageTag: e65cab33-f092-4f58-8bb6-ac7fb80904c0
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Year]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Quarter
+		lineageTag: 93cf8ca9-4f06-4b09-899b-4ed299725dc0
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Quarter]
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Month Number'
+		formatString: 0
+		lineageTag: 1363f6e0-84d1-4793-bdfc-70b24d2dcbe5
+		summarizeBy: sum
+		isNameInferred
+		sourceColumn: [Month Number]
+
+		annotation SummarizationSetBy = Automatic
+
+	column Month
+		lineageTag: d2ebe5a7-9bb4-4c01-a16a-d1a0d9a2aff2
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Month]
+		sortByColumn: 'Month Number'
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Month Name'
+		lineageTag: f2f03d4e-1510-43f9-a514-6c6e42413097
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Month Name]
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Month Year'
+		lineageTag: b24318c0-1d23-410c-a635-6880dca78719
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Month Year]
+		sortByColumn: 'Year Month Sort'
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Year Month'
+		lineageTag: c0469391-23e1-4fd3-af82-4fbe3b5ec8d5
+		summarizeBy: none
+		isNameInferred
+		sourceColumn: [Year Month]
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Year Month Sort' =
+			
+			-(YEAR(Calendar[Date]) * 100 + MONTH(Calendar[Date]))
+		formatString: 0
+		lineageTag: 0b4ca4d2-d16d-4dd8-bb4a-941c02bc22de
+		summarizeBy: sum
+
+		annotation SummarizationSetBy = Automatic
+
+	partition Calendar = calculated
+		mode: import
+		source =
+				
+				ADDCOLUMNS(
+				    CALENDAR(
+				        DATE(2024, 1, 1),
+				        DATE(2026, 6, 30)
+				    ),
+				    "Year", YEAR([Date]),
+				    "Quarter", "Q" & FORMAT([Date], "Q"),
+				    "Month Number", MONTH([Date]),
+				    "Month", FORMAT([Date], "MMM"),
+				    "Month Name", FORMAT([Date], "MMMM"),
+				    "Month Year", FORMAT([Date], "MMM yyyy"),
+				    "Year Month", FORMAT([Date], "yyyy-MM")
+				)
+
+	annotation PBI_Id = 23112020dc5c4b51beb8eced67e7298f
+

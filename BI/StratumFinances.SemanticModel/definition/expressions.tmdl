@@ -1,0 +1,23 @@
+expression 'Errors in invoices' =
+		let
+		Source = invoices,
+		  #"Detected Type Mismatches" = let
+		    tableWithOnlyPrimitiveTypes = Table.SelectColumns(Source, Table.ColumnsOfType(Source, {type nullable number, type nullable text, type nullable logical, type nullable date, type nullable datetime, type nullable datetimezone, type nullable time, type nullable duration})),
+		    recordTypeFields = Type.RecordFields(Type.TableRow(Value.Type(tableWithOnlyPrimitiveTypes))),
+		    fieldNames = Record.FieldNames(recordTypeFields),
+		    fieldTypes = List.Transform(Record.ToList(recordTypeFields), each [Type]),
+		    pairs = List.Transform(List.Positions(fieldNames), (i) => {fieldNames{i}, (v) => if v = null or Value.Is(v, fieldTypes{i}) then v else error [Message = "The type of the value does not match the type of the column.", Detail = v], fieldTypes{i}})
+		in
+		    Table.TransformColumns(Source, pairs),
+		  #"Added Index" = Table.AddIndexColumn(#"Detected Type Mismatches", "Row Number" ,1),
+		  #"Kept Errors" = Table.SelectRowsWithErrors(#"Added Index", {"invoice id", "customer id", "subscription id", "invoice date", "invoice month", "billing period start", "billing period end", "months covered", "amount usd", "discount usd", "subtotal usd", "tax usd", "total usd", "invoice status", "payment method", "days to payment", "currency"}),
+		  #"Reordered Columns" = Table.ReorderColumns(#"Kept Errors", {"Row Number", "invoice id", "customer id", "subscription id", "invoice date", "invoice month", "billing period start", "billing period end", "months covered", "amount usd", "discount usd", "subtotal usd", "tax usd", "total usd", "invoice status", "payment method", "days to payment", "currency"})
+		in
+		  #"Reordered Columns"
+	lineageTag: fcde24c7-029f-45c0-b526-bf5d62bfb9a6
+	queryGroup: 'Query Errors - 9/9/2026 10:36:11 PM'
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

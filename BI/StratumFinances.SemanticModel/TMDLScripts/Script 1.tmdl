@@ -1,0 +1,437 @@
+createOrReplace
+
+	ref table 'Finance Metrics'
+		/// Point-in-time monthly recurring run rate at the selected month end. MRR is a recurring run-
+		/// rate metric. In this synthetic dataset the monthly ledger also reconciles to subscription
+		/// revenue, but keep the MRR label for this KPI.
+		measure 'Ending MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        SUM('subscription months'[mrr usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth
+				    )
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "01 Scale"
+
+		/// Annualized point-in-time recurring run rate at the selected month end. This is the standard
+		/// point-in-time ARR metric.
+		measure 'Current ARR' = ```
+				[Ending MRR] * 12
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "01 Scale"
+
+		/// Average of the 12 month-end ARR observations ending in the selected month. This is a
+		/// portfolio-specific management metric, not the standard SaaS definition of ARR. The Copilot
+		/// may accept 'TTM ARR' as an alias, but should label the output 'Average ARR - TTM'.
+		measure 'Average ARR - TTM' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR StartMonth = EDATE(AsOfMonth, -11)
+				VAR EarliestDataMonth =
+				    CALCULATE(
+				        MIN('subscription months'[month start date]),
+				        REMOVEFILTERS()
+				    )
+				VAR MonthOffsets = GENERATESERIES(0, 11, 1)
+				RETURN
+				    IF(
+				        StartMonth < EarliestDataMonth,
+				        BLANK(),
+				        AVERAGEX(
+				            MonthOffsets,
+				            VAR ThisMonth = EDATE(AsOfMonth, -[Value])
+				            VAR ThisMRR =
+				                CALCULATE(
+				                    SUM('subscription months'[mrr usd]),
+				                    REMOVEFILTERS('Calendar'),
+				                    'subscription months'[month start date] = ThisMonth
+				                )
+				            RETURN
+				                COALESCE(ThisMRR, 0) * 12
+				        )
+				    )
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "01 Scale"
+
+		/// Percentage change in Current ARR versus the same month 12 months earlier. Requires a
+		/// comparable month 12 months earlier.
+		measure 'ARR Growth YoY' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR PriorMonth = EDATE(AsOfMonth, -12)
+				VAR CurrentMRR =
+				    CALCULATE(
+				        SUM('subscription months'[mrr usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth
+				    )
+				VAR PriorMRR =
+				    CALCULATE(
+				        SUM('subscription months'[mrr usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = PriorMonth
+				    )
+				RETURN
+				    IF(
+				        ISBLANK(PriorMRR),
+				        BLANK(),
+				        DIVIDE(CurrentMRR - PriorMRR, PriorMRR)
+				    )
+			```
+			formatString: 0.0%;-0.0%;0.0%
+			displayFolder: "02 Growth"
+
+		/// Recurring revenue added during the selected month for rows classified as New by
+		/// subscription months.movement type. Uses the source movement classification directly.
+		measure 'New MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        SUM('subscription months'[mrr delta usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[movement type] = "New"
+				    )
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "03 ARR Movement"
+
+		/// Recurring revenue added during the selected month for rows classified as Expansion by
+		/// subscription months.movement type. Uses the source movement classification directly.
+		measure 'Expansion MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        SUM('subscription months'[mrr delta usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[movement type] = "Expansion"
+				    )
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "03 ARR Movement"
+
+		/// Recurring revenue added during the selected month for rows classified as Reactivation by
+		/// subscription months.movement type. Uses the source movement classification directly.
+		measure 'Reactivation MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        SUM('subscription months'[mrr delta usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[movement type] = "Reactivation"
+				    )
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "03 ARR Movement"
+
+		/// Recurring revenue lost during the selected month for rows classified as Contraction by
+		/// subscription months.movement type. Displayed as a positive loss amount; raw mrr_delta_usd is
+		/// negative.
+		measure 'Contraction MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR RawValue =
+				    CALCULATE(
+				        SUM('subscription months'[mrr delta usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[movement type] = "Contraction"
+				    )
+				RETURN
+				    ABS(COALESCE(RawValue, 0))
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "03 ARR Movement"
+
+		/// Recurring revenue lost during the selected month for rows classified as Churn by
+		/// subscription months.movement type. Displayed as a positive loss amount; raw mrr_delta_usd is
+		/// negative.
+		measure 'Churned MRR' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR RawValue =
+				    CALCULATE(
+				        SUM('subscription months'[mrr delta usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[movement type] = "Churn"
+				    )
+				RETURN
+				    ABS(COALESCE(RawValue, 0))
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "03 ARR Movement"
+
+		/// Distinct customer accounts with positive MRR at the selected month end. The supplied ledger
+		/// is verified as one row per customer per period_month, so customer counts do not double count
+		/// subscriptions.
+		measure 'Active Customers' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        DISTINCTCOUNT('subscription months'[customer id]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+			```
+			formatString: #,0
+			displayFolder: "04 Customers"
+
+		/// Ending MRR divided by active customer accounts at the selected month end. ARPA-style
+		/// recurring-revenue metric; not average invoice value.
+		measure 'Average MRR per Active Account' = ```
+				DIVIDE([Ending MRR], [Active Customers])
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "04 Customers"
+
+		/// Current ARR divided by active customer accounts at the selected month end. Annualized
+		/// recurring run rate per active account.
+		measure 'Average ARR per Active Account' = ```
+				DIVIDE([Current ARR], [Active Customers])
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "04 Customers"
+
+		/// Ending MRR from the accounts active 12 months earlier divided by those accounts' beginning
+		/// MRR; new accounts after the beginning date are excluded. Can exceed 100% because expansion
+		/// among the beginning cohort is included.
+		measure 'Net Revenue Retention - 12M' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR EndMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR StartMonth = EDATE(EndMonth, -12)
+				VAR BeginningCohort =
+				    CALCULATETABLE(
+				        SUMMARIZE(
+				            'subscription months',
+				            'subscription months'[customer id],
+				            "BeginMRR", SUM('subscription months'[mrr usd])
+				        ),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = StartMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR BeginningMRR = SUMX(BeginningCohort, [BeginMRR])
+				VAR EndingMRR =
+				    SUMX(
+				        BeginningCohort,
+				        VAR CustomerID = [customer id]
+				        RETURN
+				            COALESCE(
+				                CALCULATE(
+				                    SUM('subscription months'[mrr usd]),
+				                    REMOVEFILTERS('Calendar'),
+				                    'subscription months'[month start date] = EndMonth,
+				                    'subscription months'[customer id] = CustomerID
+				                ),
+				                0
+				            )
+				    )
+				RETURN
+				    IF(BeginningMRR > 0, DIVIDE(EndingMRR, BeginningMRR))
+			```
+			formatString: 0.0%;-0.0%;0.0%
+			displayFolder: "05 Retention"
+
+		/// Recurring revenue retained after 12 months from the beginning account cohort, excluding
+		/// expansion. Capped at 100% by construction; expansion is excluded.
+		measure 'Gross Revenue Retention - 12M' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR EndMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR StartMonth = EDATE(EndMonth, -12)
+				VAR BeginningCohort =
+				    CALCULATETABLE(
+				        SUMMARIZE(
+				            'subscription months',
+				            'subscription months'[customer id],
+				            "BeginMRR", SUM('subscription months'[mrr usd])
+				        ),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = StartMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR BeginningMRR = SUMX(BeginningCohort, [BeginMRR])
+				VAR RetainedMRR =
+				    SUMX(
+				        BeginningCohort,
+				        VAR CustomerID = [customer id]
+				        VAR BeginMRR = [BeginMRR]
+				        VAR EndMRR =
+				            COALESCE(
+				                CALCULATE(
+				                    SUM('subscription months'[mrr usd]),
+				                    REMOVEFILTERS('Calendar'),
+				                    'subscription months'[month start date] = EndMonth,
+				                    'subscription months'[customer id] = CustomerID
+				                ),
+				                0
+				            )
+				        RETURN
+				            MIN(BeginMRR, EndMRR)
+				    )
+				RETURN
+				    IF(BeginningMRR > 0, DIVIDE(RetainedMRR, BeginningMRR))
+			```
+			formatString: 0.0%;-0.0%;0.0%
+			displayFolder: "05 Retention"
+
+		/// Share of accounts active 12 months earlier that still have positive MRR at the selected
+		/// month end. Account-count retention; customers are not weighted by ARR.
+		measure 'Logo Retention - 12M' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR EndMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR StartMonth = EDATE(EndMonth, -12)
+				VAR BeginningCohort =
+				    CALCULATETABLE(
+				        VALUES('subscription months'[customer id]),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = StartMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR BeginningLogos = COUNTROWS(BeginningCohort)
+				VAR RetainedLogos =
+				    SUMX(
+				        BeginningCohort,
+				        VAR CustomerID = 'subscription months'[customer id]
+				        VAR EndMRR =
+				            COALESCE(
+				                CALCULATE(
+				                    SUM('subscription months'[mrr usd]),
+				                    REMOVEFILTERS('Calendar'),
+				                    'subscription months'[month start date] = EndMonth,
+				                    'subscription months'[customer id] = CustomerID
+				                ),
+				                0
+				            )
+				        RETURN
+				            IF(EndMRR > 0, 1, 0)
+				    )
+				RETURN
+				    IF(BeginningLogos > 0, DIVIDE(RetainedLogos, BeginningLogos))
+			```
+			formatString: 0.0%;-0.0%;0.0%
+			displayFolder: "05 Retention"
+
+		/// Share of accounts active 12 months earlier that no longer have positive MRR at the selected
+		/// month end. Customer-count churn; distinct from Churned MRR.
+		measure 'Logo Churn - 12M' = ```
+				VAR Retention = [Logo Retention - 12M]
+				RETURN
+				    IF(NOT ISBLANK(Retention), 1 - Retention)
+			```
+			formatString: 0.0%;-0.0%;0.0%
+			displayFolder: "05 Retention"
+
+		/// Share of Current ARR attributable to the 5 largest customer accounts at the selected month
+		/// end. Customer/account grain is used before ranking.
+		measure 'Top 5 ARR Concentration' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR CustomerMRR =
+				    CALCULATETABLE(
+				        SUMMARIZE(
+				            'subscription months',
+				            'subscription months'[customer id],
+				            "CustomerMRR", SUM('subscription months'[mrr usd])
+				        ),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR TotalMRR = SUMX(CustomerMRR, [CustomerMRR])
+				VAR TopMRR =
+				    SUMX(
+				        TOPN(5, CustomerMRR, [CustomerMRR], DESC),
+				        [CustomerMRR]
+				    )
+				RETURN
+				    DIVIDE(TopMRR, TotalMRR)
+			```
+			formatString: 0.0%;-0.0%;0.0%
+			displayFolder: "06 Concentration"
+
+		/// Share of Current ARR attributable to the 10 largest customer accounts at the selected month
+		/// end. Customer/account grain is used before ranking.
+		measure 'Top 10 ARR Concentration' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR CustomerMRR =
+				    CALCULATETABLE(
+				        SUMMARIZE(
+				            'subscription months',
+				            'subscription months'[customer id],
+				            "CustomerMRR", SUM('subscription months'[mrr usd])
+				        ),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR TotalMRR = SUMX(CustomerMRR, [CustomerMRR])
+				VAR TopMRR =
+				    SUMX(
+				        TOPN(10, CustomerMRR, [CustomerMRR], DESC),
+				        [CustomerMRR]
+				    )
+				RETURN
+				    DIVIDE(TopMRR, TotalMRR)
+			```
+			formatString: 0.0%;-0.0%;0.0%
+			displayFolder: "06 Concentration"
+
+		/// Share of Current ARR attributable to the 20 largest customer accounts at the selected month
+		/// end. Customer/account grain is used before ranking.
+		measure 'Top 20 ARR Concentration' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				VAR CustomerMRR =
+				    CALCULATETABLE(
+				        SUMMARIZE(
+				            'subscription months',
+				            'subscription months'[customer id],
+				            "CustomerMRR", SUM('subscription months'[mrr usd])
+				        ),
+				        REMOVEFILTERS('Calendar'),
+				        'subscription months'[month start date] = AsOfMonth,
+				        'subscription months'[mrr usd] > 0
+				    )
+				VAR TotalMRR = SUMX(CustomerMRR, [CustomerMRR])
+				VAR TopMRR =
+				    SUMX(
+				        TOPN(20, CustomerMRR, [CustomerMRR], DESC),
+				        [CustomerMRR]
+				    )
+				RETURN
+				    DIVIDE(TopMRR, TotalMRR)
+			```
+			formatString: 0.0%;-0.0%;0.0%
+			displayFolder: "06 Concentration"
+
+		/// Net invoice value issued in the selected invoice month before tax. Uses subtotal_usd
+		/// (amount_usd less discount_usd, before tax). This is invoice-date billings and can be lumpy
+		/// for annual/multi-month invoices. Refund/failed/overdue policy can be added as separate
+		/// collection metrics.
+		measure 'Monthly Billings / Net Invoice Value' = ```
+				VAR AsOfDate = MAX('Calendar'[Date])
+				VAR AsOfMonth = DATE(YEAR(AsOfDate), MONTH(AsOfDate), 1)
+				RETURN
+				    CALCULATE(
+				        SUM('invoices'[subtotal usd]),
+				        REMOVEFILTERS('Calendar'),
+				        'invoices'[invoice month] = AsOfMonth
+				    )
+			```
+			formatString: \$#,0.00;(\$#,0.00);\$#,0.00
+			displayFolder: "07 Billings"

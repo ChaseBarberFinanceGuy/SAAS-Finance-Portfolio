@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "Report",
+    "displayName": "StratumFinances"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "155204ba-09f1-48fa-b763-7f37d9f1aa04"
+  }
+}

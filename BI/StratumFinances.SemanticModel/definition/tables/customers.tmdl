@@ -1,0 +1,141 @@
+table customers
+	lineageTag: 7aa35e4e-db58-49f3-abd4-c30e208fd9d0
+
+	column customer
+		dataType: string
+		lineageTag: 0ad9e51b-bf33-43d4-9c50-f9b984c667a0
+		summarizeBy: none
+		sourceColumn: customer
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'company name'
+		dataType: string
+		lineageTag: 102b9d37-060b-4119-a7df-a9fa4a944d44
+		summarizeBy: none
+		sourceColumn: company name
+
+		annotation SummarizationSetBy = Automatic
+
+	column country
+		dataType: string
+		lineageTag: bcc08774-cc1f-4c05-8a30-8570d611311d
+		summarizeBy: none
+		sourceColumn: country
+
+		annotation SummarizationSetBy = Automatic
+
+	column region
+		dataType: string
+		lineageTag: b574f467-2eb9-44d0-8425-143d9b6ef101
+		summarizeBy: none
+		sourceColumn: region
+
+		annotation SummarizationSetBy = Automatic
+
+	column industry
+		dataType: string
+		lineageTag: a70a6a9a-72b9-4ba9-aaf8-9a581a991bb6
+		summarizeBy: none
+		sourceColumn: industry
+
+		annotation SummarizationSetBy = Automatic
+
+	column segment
+		dataType: string
+		lineageTag: de3de130-9bcd-4d85-8bee-04d23d1faa48
+		summarizeBy: none
+		sourceColumn: segment
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'employees band'
+		dataType: string
+		lineageTag: 8d30d13d-3dfc-492b-ba0e-36ef354b4ed4
+		summarizeBy: none
+		sourceColumn: employees band
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'signup date'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 31391a53-dcf5-40b4-9456-69a5c1d76078
+		summarizeBy: none
+		sourceColumn: signup date
+
+		variation Variation
+			isDefault
+			relationship: c5a73250-f544-4fbb-9077-486f8f95756f
+			defaultHierarchy: LocalDateTable_14e017bb-29bc-4d6e-a8c1-94d89deae4d6.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'acquisition channel'
+		dataType: string
+		lineageTag: a4cea346-d91c-4113-b6ca-3bc43b2cf3e5
+		summarizeBy: none
+		sourceColumn: acquisition channel
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'cohort month'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 6902b9a8-e365-4d92-8dc5-ceaaef77adb2
+		summarizeBy: none
+		sourceColumn: cohort month
+
+		variation Variation
+			isDefault
+			relationship: e6e56890-70c9-408a-998b-83a0bf742d45
+			defaultHierarchy: LocalDateTable_79e1d2e1-c869-4d83-bc0e-7ba29f64c90a.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column 'customer status'
+		dataType: string
+		lineageTag: 70c6824d-6aa0-43c8-8efb-98e32a9a5440
+		summarizeBy: none
+		sourceColumn: customer status
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'churn date'
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: bb8b30a9-7fd6-42dc-ab89-3e15e3b72768
+		summarizeBy: none
+		sourceColumn: churn date
+
+		variation Variation
+			isDefault
+			relationship: a4182eac-4b6f-4cfe-81c6-9226486f49aa
+			defaultHierarchy: LocalDateTable_1ebb7bde-8e46-4ad4-a40e-b53512b84d3b.'Date Hierarchy'
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	partition customers = m
+		mode: import
+		source =
+				let
+				    Source = Csv.Document(File.Contents("C:\Users\csbar\OneDrive\Documents\GitHub\SAAS-Finance-Portfolio\data\raw\customers.csv"),[Delimiter=",", Columns=12, Encoding=65001, QuoteStyle=QuoteStyle.None]),
+				    #"Promoted Headers" = Table.PromoteHeaders(Source, [PromoteAllScalars=true]),
+				    #"Changed Type" = Table.TransformColumnTypes(#"Promoted Headers",{{"customer_id", type text}, {"company_name", type text}, {"country", type text}, {"region", type text}, {"industry", type text}, {"segment", type text}, {"employees_band", type text}, {"signup_date", type text}, {"acquisition_channel", type text}, {"customer_status", type text}}),
+				    #"Changed Type with Locale" = Table.TransformColumnTypes(#"Changed Type", {{"signup_date", type date}}, "en-GB"),
+				    #"Changed Type with Locale1" = Table.TransformColumnTypes(#"Changed Type with Locale", {{"cohort_month", type date}, {"churn_date", type date}}, "en-GB"),
+				    #"Changed Type with Locale2" = Table.TransformColumnTypes(#"Changed Type with Locale1", {{"signup_date", type date}, {"cohort_month", type date}, {"churn_date", type date}}, "en-GB"),
+				    #"Renamed Columns" = Table.RenameColumns(#"Changed Type with Locale2",{{"customer_id", "customer"}, {"company_name", "company name"}, {"employees_band", "employees band"}, {"signup_date", "signup date"}, {"acquisition_channel", "acquisition channel"}, {"churn_date", "churn date"}, {"cohort_month", "cohort month"}, {"customer_status", "customer status"}})
+				in
+				    #"Renamed Columns"
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

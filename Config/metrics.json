@@ -1,0 +1,1476 @@
+{
+  "catalog": {
+    "name": "Aster AI SaaS Finance Metric Catalog",
+    "version": "0.2.0",
+    "draft_date": "2026-09-09",
+    "intended_repo_path": "config/metrics.json",
+    "company": "Aster AI",
+    "source_dataset": "Prime Levels synthetic B2B SaaS subscription dataset",
+    "status": "source_mapped_metrics_verified",
+    "purpose": "Single source of truth for finance metric definitions used by the Executive Dashboard, AI Finance Copilot, and automated Monthly Business Review."
+  },
+  "data_profile": {
+    "observed_period_start": "2024-01",
+    "observed_period_end": "2026-06",
+    "currency": "USD",
+    "tables": {
+      "customers": {
+        "rows": 1200,
+        "columns": [
+          "customer_id",
+          "company_name",
+          "country",
+          "region",
+          "industry",
+          "segment",
+          "employees_band",
+          "signup_date",
+          "acquisition_channel",
+          "cohort_month",
+          "customer_status",
+          "churn_date"
+        ]
+      },
+      "subscriptions": {
+        "rows": 1381,
+        "columns": [
+          "subscription_id",
+          "customer_id",
+          "plan_id",
+          "start_date",
+          "end_date",
+          "subscription_status",
+          "billing_interval",
+          "seats",
+          "discount_pct",
+          "mrr_usd",
+          "contract_term_months",
+          "auto_renew"
+        ]
+      },
+      "plans": {
+        "rows": 10,
+        "columns": [
+          "plan_id",
+          "plan_name",
+          "tier",
+          "billing_interval",
+          "list_price_usd",
+          "monthly_price_usd",
+          "billing_months",
+          "seats_included",
+          "extra_seat_price_usd",
+          "is_active",
+          "launched_date"
+        ]
+      },
+      "subscription_months": {
+        "rows": 19015,
+        "columns": [
+          "record_id",
+          "customer_id",
+          "subscription_id",
+          "plan_id",
+          "period_month",
+          "month_start_date",
+          "is_active",
+          "seats",
+          "mrr_usd",
+          "previous_mrr_usd",
+          "mrr_delta_usd",
+          "movement_type",
+          "tenure_months",
+          "cohort_month",
+          "currency"
+        ]
+      },
+      "invoices": {
+        "rows": 11257,
+        "columns": [
+          "invoice_id",
+          "customer_id",
+          "subscription_id",
+          "invoice_date",
+          "invoice_month",
+          "billing_period_start",
+          "billing_period_end",
+          "months_covered",
+          "amount_usd",
+          "discount_usd",
+          "subtotal_usd",
+          "tax_usd",
+          "total_usd",
+          "invoice_status",
+          "payment_method",
+          "days_to_payment",
+          "currency"
+        ]
+      }
+    },
+    "verified_structure": {
+      "subscription_months_unique_customer_period": true,
+      "subscription_months_customer_fk_valid": true,
+      "subscription_months_subscription_fk_valid": true,
+      "subscription_months_plan_fk_valid": true,
+      "invoices_customer_fk_valid": true,
+      "invoices_subscription_fk_valid": true,
+      "subscription_months_grain": "one row per customer_id per period_month",
+      "movement_types_observed": {
+        "Retained": 16143,
+        "New": 1200,
+        "Expansion": 1023,
+        "Churn": 368,
+        "Contraction": 258,
+        "Reactivation": 23
+      },
+      "arr_bridge_max_absolute_reconciliation_error_usd": 5.820766091346741e-11
+    }
+  },
+  "governance": {
+    "finance_first_rule": "If a number matters, calculate it deterministically in SQL or Python. Use the LLM to route, interpret, summarize, and explain - not as the calculator of record.",
+    "primary_fact_rule": "Use subscription_months as the historical recurring-revenue fact table. Do not use subscriptions.mrr_usd as the historical time series.",
+    "customer_grain_rule": "The supplied subscription_months file is verified as one row per customer_id per period_month. Use customer_id as the account/logo grain for retention and concentration metrics.",
+    "period_rule": "Every answer and visual must state the exact as-of date or date range used.",
+    "dimension_rule": "Join subscription_months.customer_id to customers.customer_id and subscription_months.plan_id to plans.plan_id for segmentation.",
+    "billing_rule": "Use invoices.subtotal_usd for net invoice value before tax. Do not confuse invoice-date billings with point-in-time ARR."
+  },
+  "metric_alias_policy": {
+    "ARR": "current_arr",
+    "Current ARR": "current_arr",
+    "TTM ARR": "avg_ttm_arr",
+    "Average TTM ARR": "avg_ttm_arr",
+    "Average ARR TTM": "avg_ttm_arr",
+    "MRR": "ending_mrr",
+    "NRR": "nrr_12m",
+    "GRR": "grr_12m",
+    "Logo churn": "logo_churn_12m",
+    "Revenue churn": "churned_mrr"
+  },
+  "ambiguity_rules": [
+    {
+      "term": "TTM ARR",
+      "behavior": "In this portfolio, map this alias to avg_ttm_arr and label the answer 'Average ARR - TTM'. Explain on request that standard ARR is point-in-time."
+    },
+    {
+      "term": "revenue",
+      "behavior": "Clarify whether the user means ARR/MRR, recognized subscription revenue, or invoice-date billings. Do not silently substitute one for another."
+    },
+    {
+      "term": "churn",
+      "behavior": "Distinguish Churned MRR from Logo Churn unless context makes the requested measure explicit."
+    },
+    {
+      "term": "current",
+      "behavior": "Interpret as the latest fully loaded period_month (2026-06) unless a different date is supplied."
+    }
+  ],
+  "metrics": {
+    "ending_mrr": {
+      "id": "ending_mrr",
+      "label": "Ending MRR",
+      "category": "scale",
+      "definition": "Point-in-time monthly recurring run rate at the selected month end.",
+      "formula": "SUM(subscription_months.mrr_usd) for selected subscription_months.period_month",
+      "period": {
+        "type": "point_in_time",
+        "grain": "month_end"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_company_monthly_kpis",
+        "certified_field": "ending_mrr",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 465561.26,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "mrr",
+        "monthly recurring revenue",
+        "current mrr"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "executive_overview",
+        "mbr_slide": 2,
+        "priority": "supporting"
+      },
+      "caveat": "MRR is a recurring run-rate metric. In this synthetic dataset the monthly ledger also reconciles to subscription revenue, but keep the MRR label for this KPI.",
+      "validation_tests": [
+        "company MRR equals the sum of customer-month mrr_usd"
+      ],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "current_arr": {
+      "id": "current_arr",
+      "label": "Current ARR",
+      "category": "scale",
+      "definition": "Annualized point-in-time recurring run rate at the selected month end.",
+      "formula": "12 * SUM(subscription_months.mrr_usd) for selected period_month",
+      "period": {
+        "type": "point_in_time",
+        "grain": "month_end"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_company_monthly_kpis",
+        "certified_field": "current_arr",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 5586735.12,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "arr",
+        "annual recurring revenue",
+        "current arr"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "executive_overview",
+        "mbr_slide": 1,
+        "priority": "headline"
+      },
+      "caveat": "This is the standard point-in-time ARR metric.",
+      "validation_tests": [
+        "current_arr = ending_mrr * 12"
+      ],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "avg_ttm_arr": {
+      "id": "avg_ttm_arr",
+      "label": "Average ARR - TTM",
+      "category": "scale",
+      "definition": "Average of the 12 month-end ARR observations ending in the selected month.",
+      "formula": "AVG(12 * monthly SUM(subscription_months.mrr_usd)) across selected period and prior 11 period_months",
+      "period": {
+        "type": "trailing_window",
+        "grain": "12_month_window"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_company_monthly_kpis",
+        "certified_field": "avg_ttm_arr",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-12",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 4662290.81,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "ttm arr",
+        "average ttm arr",
+        "average arr ttm",
+        "trailing 12 month average arr"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "executive_overview",
+        "mbr_slide": 1,
+        "priority": "supporting"
+      },
+      "caveat": "This is a portfolio-specific management metric, not the standard SaaS definition of ARR. The Copilot may accept 'TTM ARR' as an alias, but should label the output 'Average ARR - TTM'.",
+      "validation_tests": [
+        "requires 12 consecutive monthly ARR observations"
+      ],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "arr_yoy_growth_pct": {
+      "id": "arr_yoy_growth_pct",
+      "label": "ARR Growth YoY",
+      "category": "growth",
+      "definition": "Percentage change in Current ARR versus the same month 12 months earlier.",
+      "formula": "(current_arr / current_arr_12_months_prior) - 1",
+      "period": {
+        "type": "comparison",
+        "grain": "month"
+      },
+      "format": {
+        "type": "percentage",
+        "decimals": 1,
+        "suffix": "%"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_company_monthly_kpis",
+        "certified_field": "arr_yoy_growth_pct",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2025-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 0.5019046031851415,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "arr growth",
+        "yoy arr growth"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "executive_overview",
+        "mbr_slide": 1,
+        "priority": "headline"
+      },
+      "caveat": "Requires a comparable month 12 months earlier.",
+      "validation_tests": [
+        "null when 12-month prior comparator is unavailable"
+      ],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "new_mrr": {
+      "id": "new_mrr",
+      "label": "New MRR",
+      "category": "arr_movement",
+      "definition": "Recurring revenue added during the selected month for rows classified as New by subscription_months.movement_type.",
+      "formula": "SUM(subscription_months.mrr_delta_usd WHERE movement_type = 'New')",
+      "period": {
+        "type": "flow",
+        "grain": "month"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.movement_type",
+          "subscription_months.mrr_delta_usd"
+        ],
+        "certified_view": "vw_arr_bridge",
+        "certified_field": "new_mrr",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 13360.74,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "new",
+        "new arr"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "arr_bridge",
+        "mbr_slide": 2,
+        "priority": "driver"
+      },
+      "caveat": "Uses the source movement classification directly.",
+      "validation_tests": [
+        "movement_type exact value = 'New'"
+      ],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "expansion_mrr": {
+      "id": "expansion_mrr",
+      "label": "Expansion MRR",
+      "category": "arr_movement",
+      "definition": "Recurring revenue added during the selected month for rows classified as Expansion by subscription_months.movement_type.",
+      "formula": "SUM(subscription_months.mrr_delta_usd WHERE movement_type = 'Expansion')",
+      "period": {
+        "type": "flow",
+        "grain": "month"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.movement_type",
+          "subscription_months.mrr_delta_usd"
+        ],
+        "certified_view": "vw_arr_bridge",
+        "certified_field": "expansion_mrr",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 9282.1,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "expansion",
+        "expansion arr"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "arr_bridge",
+        "mbr_slide": 2,
+        "priority": "driver"
+      },
+      "caveat": "Uses the source movement classification directly.",
+      "validation_tests": [
+        "movement_type exact value = 'Expansion'"
+      ],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "reactivation_mrr": {
+      "id": "reactivation_mrr",
+      "label": "Reactivation MRR",
+      "category": "arr_movement",
+      "definition": "Recurring revenue added during the selected month for rows classified as Reactivation by subscription_months.movement_type.",
+      "formula": "SUM(subscription_months.mrr_delta_usd WHERE movement_type = 'Reactivation')",
+      "period": {
+        "type": "flow",
+        "grain": "month"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.movement_type",
+          "subscription_months.mrr_delta_usd"
+        ],
+        "certified_view": "vw_arr_bridge",
+        "certified_field": "reactivation_mrr",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 573.25,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "reactivation",
+        "reactivation arr"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "arr_bridge",
+        "mbr_slide": 2,
+        "priority": "driver"
+      },
+      "caveat": "Uses the source movement classification directly.",
+      "validation_tests": [
+        "movement_type exact value = 'Reactivation'"
+      ],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "contraction_mrr": {
+      "id": "contraction_mrr",
+      "label": "Contraction MRR",
+      "category": "arr_movement",
+      "definition": "Recurring revenue lost during the selected month for rows classified as Contraction by subscription_months.movement_type.",
+      "formula": "ABS(SUM(subscription_months.mrr_delta_usd WHERE movement_type = 'Contraction'))",
+      "period": {
+        "type": "flow",
+        "grain": "month"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.movement_type",
+          "subscription_months.mrr_delta_usd"
+        ],
+        "certified_view": "vw_arr_bridge",
+        "certified_field": "contraction_mrr",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 462.15000000000003,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "contraction",
+        "contraction arr"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "arr_bridge",
+        "mbr_slide": 2,
+        "priority": "driver"
+      },
+      "caveat": "Displayed as a positive loss amount; raw mrr_delta_usd is negative.",
+      "validation_tests": [
+        "movement_type exact value = 'Contraction'"
+      ],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "churned_mrr": {
+      "id": "churned_mrr",
+      "label": "Churned MRR",
+      "category": "arr_movement",
+      "definition": "Recurring revenue lost during the selected month for rows classified as Churn by subscription_months.movement_type.",
+      "formula": "ABS(SUM(subscription_months.mrr_delta_usd WHERE movement_type = 'Churn'))",
+      "period": {
+        "type": "flow",
+        "grain": "month"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.movement_type",
+          "subscription_months.mrr_delta_usd"
+        ],
+        "certified_view": "vw_arr_bridge",
+        "certified_field": "churned_mrr",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 7276.07,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "churn",
+        "churned arr"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "arr_bridge",
+        "mbr_slide": 2,
+        "priority": "driver"
+      },
+      "caveat": "Displayed as a positive loss amount; raw mrr_delta_usd is negative.",
+      "validation_tests": [
+        "movement_type exact value = 'Churn'"
+      ],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "active_customers": {
+      "id": "active_customers",
+      "label": "Active Customers",
+      "category": "customers",
+      "definition": "Distinct customer accounts with positive MRR at the selected month end.",
+      "formula": "COUNT(DISTINCT subscription_months.customer_id WHERE subscription_months.mrr_usd > 0)",
+      "period": {
+        "type": "point_in_time",
+        "grain": "month_end"
+      },
+      "format": {
+        "type": "integer",
+        "decimals": 0
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.customer_id",
+          "subscription_months.mrr_usd",
+          "subscription_months.is_active"
+        ],
+        "certified_view": "vw_company_monthly_kpis",
+        "certified_field": "active_customers",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 855,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "customers",
+        "active accounts",
+        "logos"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "executive_overview",
+        "mbr_slide": 1,
+        "priority": "headline"
+      },
+      "caveat": "The supplied ledger is verified as one row per customer per period_month, so customer counts do not double count subscriptions.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "avg_mrr_per_account": {
+      "id": "avg_mrr_per_account",
+      "label": "Average MRR per Active Account",
+      "category": "customers",
+      "definition": "Ending MRR divided by active customer accounts at the selected month end.",
+      "formula": "ending_mrr / active_customers",
+      "period": {
+        "type": "point_in_time",
+        "grain": "month_end"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.customer_id",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_company_monthly_kpis",
+        "certified_field": "avg_mrr_per_account",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 544.5160935672515,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "arpa",
+        "average mrr"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "executive_overview",
+        "mbr_slide": 4,
+        "priority": "supporting"
+      },
+      "caveat": "ARPA-style recurring-revenue metric; not average invoice value.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "avg_arr_per_account": {
+      "id": "avg_arr_per_account",
+      "label": "Average ARR per Active Account",
+      "category": "customers",
+      "definition": "Current ARR divided by active customer accounts at the selected month end.",
+      "formula": "current_arr / active_customers",
+      "period": {
+        "type": "point_in_time",
+        "grain": "month_end"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.period_month",
+          "subscription_months.customer_id",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_company_monthly_kpis",
+        "certified_field": "avg_arr_per_account",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 6534.193122807018,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "average arr",
+        "arr per customer",
+        "average acv proxy"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "executive_overview",
+        "mbr_slide": 4,
+        "priority": "headline"
+      },
+      "caveat": "Annualized recurring run rate per active account.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "nrr_12m": {
+      "id": "nrr_12m",
+      "label": "Net Revenue Retention - 12M",
+      "category": "retention",
+      "definition": "Ending MRR from the accounts active 12 months earlier divided by those accounts' beginning MRR; new accounts after the beginning date are excluded.",
+      "formula": "For beginning cohort where mrr_usd > 0 at period T-12: SUM(mrr_usd at T, default 0 if absent) / SUM(mrr_usd at T-12)",
+      "period": {
+        "type": "cohort_comparison",
+        "grain": "12_month_window"
+      },
+      "format": {
+        "type": "percentage",
+        "decimals": 1,
+        "suffix": "%"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.customer_id",
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_retention_by_segment",
+        "certified_field": "nrr_12m",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2025-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 1.1529564206893217,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "nrr",
+        "net revenue retention",
+        "net retention"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "growth_retention",
+        "mbr_slide": 1,
+        "priority": "headline"
+      },
+      "caveat": "Can exceed 100% because expansion among the beginning cohort is included.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "grr_12m": {
+      "id": "grr_12m",
+      "label": "Gross Revenue Retention - 12M",
+      "category": "retention",
+      "definition": "Recurring revenue retained after 12 months from the beginning account cohort, excluding expansion.",
+      "formula": "SUM(MIN(end_mrr, begin_mrr) by beginning customer_id) / SUM(begin_mrr)",
+      "period": {
+        "type": "cohort_comparison",
+        "grain": "12_month_window"
+      },
+      "format": {
+        "type": "percentage",
+        "decimals": 1,
+        "suffix": "%"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.customer_id",
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_retention_by_segment",
+        "certified_field": "grr_12m",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2025-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 0.8682293581101113,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "grr",
+        "gross revenue retention",
+        "gross retention"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "growth_retention",
+        "mbr_slide": 1,
+        "priority": "headline"
+      },
+      "caveat": "Capped at 100% by construction; expansion is excluded.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "logo_retention_12m": {
+      "id": "logo_retention_12m",
+      "label": "Logo Retention - 12M",
+      "category": "retention",
+      "definition": "Share of accounts active 12 months earlier that still have positive MRR at the selected month end.",
+      "formula": "COUNT(beginning customer_id with end_mrr > 0) / COUNT(beginning active customer_id)",
+      "period": {
+        "type": "cohort_comparison",
+        "grain": "12_month_window"
+      },
+      "format": {
+        "type": "percentage",
+        "decimals": 1,
+        "suffix": "%"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.customer_id",
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_retention_by_segment",
+        "certified_field": "logo_retention_12m",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2025-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 0.8266871165644172,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "logo retention",
+        "customer retention"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "growth_retention",
+        "mbr_slide": 3,
+        "priority": "supporting"
+      },
+      "caveat": "Account-count retention; customers are not weighted by ARR.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "logo_churn_12m": {
+      "id": "logo_churn_12m",
+      "label": "Logo Churn - 12M",
+      "category": "retention",
+      "definition": "Share of accounts active 12 months earlier that no longer have positive MRR at the selected month end.",
+      "formula": "1 - logo_retention_12m",
+      "period": {
+        "type": "cohort_comparison",
+        "grain": "12_month_window"
+      },
+      "format": {
+        "type": "percentage",
+        "decimals": 1,
+        "suffix": "%"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.customer_id",
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_retention_by_segment",
+        "certified_field": "logo_churn_12m",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2025-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 0.17331288343558282,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "logo churn",
+        "customer churn"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "growth_retention",
+        "mbr_slide": 3,
+        "priority": "supporting"
+      },
+      "caveat": "Customer-count churn; distinct from Churned MRR.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "top_5_arr_concentration": {
+      "id": "top_5_arr_concentration",
+      "label": "Top 5 ARR Concentration",
+      "category": "concentration",
+      "definition": "Share of Current ARR attributable to the 5 largest customer accounts at the selected month end.",
+      "formula": "SUM(top 5 customer_id values of 12*mrr_usd) / current_arr",
+      "period": {
+        "type": "point_in_time",
+        "grain": "month_end"
+      },
+      "format": {
+        "type": "percentage",
+        "decimals": 1,
+        "suffix": "%"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.customer_id",
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_customer_concentration",
+        "certified_field": "top_5_arr_concentration",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 0.07854115696825806,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "top 5 concentration",
+        "top 5 arr share"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "customer_concentration",
+        "mbr_slide": 4,
+        "priority": "risk"
+      },
+      "caveat": "Customer/account grain is used before ranking.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "top_10_arr_concentration": {
+      "id": "top_10_arr_concentration",
+      "label": "Top 10 ARR Concentration",
+      "category": "concentration",
+      "definition": "Share of Current ARR attributable to the 10 largest customer accounts at the selected month end.",
+      "formula": "SUM(top 10 customer_id values of 12*mrr_usd) / current_arr",
+      "period": {
+        "type": "point_in_time",
+        "grain": "month_end"
+      },
+      "format": {
+        "type": "percentage",
+        "decimals": 1,
+        "suffix": "%"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.customer_id",
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_customer_concentration",
+        "certified_field": "top_10_arr_concentration",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 0.1302686997625189,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "top 10 concentration",
+        "top 10 arr share"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "customer_concentration",
+        "mbr_slide": 4,
+        "priority": "risk"
+      },
+      "caveat": "Customer/account grain is used before ranking.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "top_20_arr_concentration": {
+      "id": "top_20_arr_concentration",
+      "label": "Top 20 ARR Concentration",
+      "category": "concentration",
+      "definition": "Share of Current ARR attributable to the 20 largest customer accounts at the selected month end.",
+      "formula": "SUM(top 20 customer_id values of 12*mrr_usd) / current_arr",
+      "period": {
+        "type": "point_in_time",
+        "grain": "month_end"
+      },
+      "format": {
+        "type": "percentage",
+        "decimals": 1,
+        "suffix": "%"
+      },
+      "source": {
+        "raw_fields": [
+          "subscription_months.customer_id",
+          "subscription_months.period_month",
+          "subscription_months.mrr_usd"
+        ],
+        "certified_view": "vw_customer_concentration",
+        "certified_field": "top_20_arr_concentration",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 0.2085494613533781,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "top 20 concentration",
+        "top 20 arr share"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "subscription_months.cohort_month",
+        "subscription_months.tenure_months"
+      ],
+      "presentation": {
+        "dashboard": "customer_concentration",
+        "mbr_slide": 4,
+        "priority": "risk"
+      },
+      "caveat": "Customer/account grain is used before ranking.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    },
+    "monthly_billings": {
+      "id": "monthly_billings",
+      "label": "Monthly Billings / Net Invoice Value",
+      "category": "billing",
+      "definition": "Net invoice value issued in the selected invoice month before tax.",
+      "formula": "SUM(invoices.subtotal_usd WHERE invoices.invoice_month = selected month)",
+      "period": {
+        "type": "flow",
+        "grain": "month"
+      },
+      "format": {
+        "type": "currency_compact",
+        "decimals": 1,
+        "prefix": "$"
+      },
+      "source": {
+        "raw_fields": [
+          "invoices.invoice_month",
+          "invoices.subtotal_usd",
+          "invoices.invoice_status",
+          "invoices.months_covered"
+        ],
+        "certified_view": "vw_invoice_summary",
+        "certified_field": "monthly_billings",
+        "mapping_status": "mapped_and_verified_against_supplied_csvs"
+      },
+      "availability": {
+        "status": "available",
+        "earliest_supported_period": "2024-01",
+        "latest_supported_period": "2026-06",
+        "sample_as_of": "2026-06",
+        "sample_value": 213227.15000000002,
+        "note": "Fully derivable from supplied data."
+      },
+      "aliases": [
+        "billings",
+        "invoice value",
+        "net invoice value"
+      ],
+      "supported_dimensions": [
+        "customers.segment",
+        "customers.region",
+        "customers.country",
+        "customers.industry",
+        "customers.acquisition_channel",
+        "plans.tier",
+        "plans.plan_name",
+        "plans.billing_interval",
+        "invoices.invoice_status",
+        "invoices.payment_method"
+      ],
+      "presentation": {
+        "dashboard": "supporting_detail",
+        "mbr_slide": null,
+        "priority": "supporting"
+      },
+      "caveat": "Uses subtotal_usd (amount_usd less discount_usd, before tax). This is invoice-date billings and can be lumpy for annual/multi-month invoices. Refund/failed/overdue policy can be added as separate collection metrics.",
+      "validation_tests": [],
+      "ai_behavior": {
+        "headline_answer_uses_certified_value": true,
+        "always_show_period": true,
+        "show_definition_when_ambiguous": true
+      }
+    }
+  },
+  "validation_checks": [
+    {
+      "id": "source_grain_unique",
+      "rule": "subscription_months has exactly one row per customer_id + period_month",
+      "status": "passed_on_supplied_data"
+    },
+    {
+      "id": "foreign_keys_valid",
+      "rule": "subscription_months customer/subscription/plan keys and invoice customer/subscription keys resolve",
+      "status": "passed_on_supplied_data"
+    },
+    {
+      "id": "arr_equals_mrr_times_12",
+      "rule": "current_arr = ending_mrr * 12",
+      "status": "passed_on_supplied_data"
+    },
+    {
+      "id": "arr_bridge_reconciles",
+      "rule": "prior month MRR + SUM(current month mrr_delta_usd) = current month MRR",
+      "status": "passed_all_observed_months",
+      "max_absolute_error_usd": 5.820766091346741e-11
+    },
+    {
+      "id": "grr_bounds",
+      "rule": "0 <= grr_12m <= 1",
+      "status": "passed_for_latest_sample"
+    },
+    {
+      "id": "logo_retention_bounds",
+      "rule": "0 <= logo_retention_12m <= 1 and logo_churn_12m = 1 - logo_retention_12m",
+      "status": "passed_for_latest_sample"
+    },
+    {
+      "id": "concentration_monotonic",
+      "rule": "top_5 <= top_10 <= top_20 <= 1",
+      "status": "passed_for_latest_sample"
+    },
+    {
+      "id": "ttm_average_coverage",
+      "rule": "avg_ttm_arr requires 12 consecutive monthly ARR values",
+      "status": "available_from_2024-12_through_2026-06"
+    }
+  ]
+}

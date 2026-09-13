@@ -1,0 +1,49 @@
+table 'Revenue View'
+	lineageTag: 03745210-8328-48b7-b92c-ad00d409a62c
+
+	column 'Revenue View'
+		lineageTag: 53a98ef2-45df-4134-a3ee-f8c622513344
+		summarizeBy: none
+		sourceColumn: [Value1]
+		sortByColumn: 'Revenue View Order'
+
+		relatedColumnDetails
+			groupByColumn: 'Revenue View Fields'
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Revenue View Fields'
+		isHidden
+		lineageTag: 9affedf5-ba15-4f61-a6e2-e197aab6df17
+		summarizeBy: none
+		sourceColumn: [Value2]
+		sortByColumn: 'Revenue View Order'
+
+		extendedProperty ParameterMetadata =
+				{
+				  "version": 3,
+				  "kind": 2
+				}
+
+		annotation SummarizationSetBy = Automatic
+
+	column 'Revenue View Order'
+		isHidden
+		formatString: 0
+		lineageTag: ba6ba2f5-8892-40bc-bea0-0186fe935095
+		summarizeBy: sum
+		sourceColumn: [Value3]
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'Revenue View' = calculated
+		mode: import
+		source =
+				
+				{
+				    ("MRR", NAMEOF('Bridge Steps'[MRR Bridge Value]), 0),
+				    ("ARR", NAMEOF('Bridge Steps'[ARR Bridge Value]), 1)
+				}
+
+	annotation PBI_Id = c162904c8fd449118e1734e2ccf108eb
+
