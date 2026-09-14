@@ -1,410 +1,512 @@
 """
 Stratum | Management Flags
-Generated-commentary validation layer.
+Deterministic validation layer.
 
-LLM output is treated as untrusted until it passes:
-- response schema checks
-- selected-candidate mapping
-- certified metric checks
-- supported-number checks
-- duplicate checks
-- period / scope consistency
+Generated commentary is treated as untrusted until it passes validation.
+
+Validation covers:
+- response schema
+- maximum flag count
+- source metrics
+- selected candidate mapping
+- unsupported numeric claims
+- permitted presentation formatting / rounding
+
+Important:
+The LLM may FORMAT supplied facts for executive readability.
+It may not CALCULATE or INVENT new facts.
+
+Examples of permitted formatting:
+    5586735.12  -> $5.6M
+    465561.26   -> $465.6K
+    0.5019046   -> 50.2%
+    1.1529564   -> 115.3%
+    -0.1627     -> -0.2 ppt
+
+Compact notation and rounding are presentation transformations,
+not new calculations.
 """
 
 from __future__ import annotations
 
-import json
 import math
 import re
-from pathlib import Path
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict, is_dataclass
 from typing import Any
 
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-METRICS_CONFIG_PATH = REPO_ROOT / "config" / "metrics.json"
-
-
-ALLOWED_SEVERITIES = {
-    "positive",
-    "negative",
-    "mixed",
-    "neutral",
-}
+# ---------------------------------------------------------------------
+# Public exception
+# ---------------------------------------------------------------------
 
 
 class ManagementFlagValidationError(ValueError):
-    """Raised when generated commentary violates the finance contract."""
+    """Raised when generated Management Flag commentary violates policy."""
 
 
-# ------------------------------------------------------------
-# Metric catalog
-# ------------------------------------------------------------
-
-def load_metric_catalog() -> dict[str, Any]:
-    with METRICS_CONFIG_PATH.open("r", encoding="utf-8") as f:
-        return json.load(f)
+# ---------------------------------------------------------------------
+# General helpers
+# ---------------------------------------------------------------------
 
 
-def get_known_metric_ids(
-    metric_catalog: dict[str, Any] | None = None,
-) -> set[str]:
-    if metric_catalog is None:
-        metric_catalog = load_metric_catalog()
-
-    return set(
-        metric_catalog.get("metrics", {}).keys()
-    )
-
-
-# ------------------------------------------------------------
-# Numeric helpers
-# ------------------------------------------------------------
-
-def _is_number(value: Any) -> bool:
-    if isinstance(value, bool):
-        return False
-
-    try:
-        return math.isfinite(float(value))
-    except (TypeError, ValueError):
-        return False
-
-
-def _flatten_numeric_values(
-    obj: Any,
-) -> list[float]:
+def _to_plain_dict(value: Any) -> Any:
     """
-    Recursively collect numeric facts from a nested structure.
+    Convert common structured-response objects into plain Python objects.
+    Supports dicts, dataclasses, and Pydantic-style models.
     """
 
-    values: list[float] = []
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
 
-    if isinstance(obj, dict):
-        for value in obj.values():
-            values.extend(
-                _flatten_numeric_values(value)
-            )
+    if is_dataclass(value):
+        return asdict(value)
 
-    elif isinstance(obj, (list, tuple)):
-        for value in obj:
-            values.extend(
-                _flatten_numeric_values(value)
-            )
-
-    elif _is_number(obj):
-        values.append(float(obj))
-
-    return values
+    return value
 
 
-NUMBER_PATTERN = re.compile(
-    r"""
-    (?<![\w-])
-    (?P<currency>\$)?
-    (?P<number>
-        -?
-        (?:\d{1,3}(?:,\d{3})*|\d+)
-        (?:\.\d+)?
-    )
-    (?P<suffix>[KkMmBb])?
-    (?P<percent>%)
-    |
-    (?<![\w-])
-    (?P<currency2>\$)?
-    (?P<number2>
-        -?
-        (?:\d{1,3}(?:,\d{3})*|\d+)
-        (?:\.\d+)?
-    )
-    (?P<suffix2>[KkMmBb])?
-    (?![\w-])
-    """,
-    re.VERBOSE,
-)
+def _get_flags(response: Any) -> list[dict[str, Any]]:
+    """Extract the flags array from the structured writer response."""
 
+    response = _to_plain_dict(response)
 
-def _extract_numeric_mentions(
-    text: str,
-) -> list[dict[str, Any]]:
-    """
-    Extract human-readable numeric mentions from prose.
-
-    Examples:
-        $5.59M
-        50.2%
-        855
-        $15.5K
-
-    Numbers inside terms such as '12-month' are intentionally ignored.
-    """
-
-    mentions: list[dict[str, Any]] = []
-
-    for match in NUMBER_PATTERN.finditer(text):
-
-        currency = (
-            match.group("currency")
-            or match.group("currency2")
-        )
-
-        raw_number = (
-            match.group("number")
-            or match.group("number2")
-        )
-
-        suffix = (
-            match.group("suffix")
-            or match.group("suffix2")
-        )
-
-        percent = bool(match.group("percent"))
-
-        if raw_number is None:
-            continue
-
-        numeric = float(
-            raw_number.replace(",", "")
-        )
-
-        multiplier = 1.0
-
-        if suffix:
-            multiplier = {
-                "k": 1_000.0,
-                "m": 1_000_000.0,
-                "b": 1_000_000_000.0,
-            }[suffix.lower()]
-
-        normalized = numeric * multiplier
-
-        mentions.append(
-            {
-                "raw": match.group(0),
-                "value": normalized,
-                "percent": percent,
-                "currency": bool(currency),
-            }
-        )
-
-    return mentions
-
-
-def _matches_fact(
-    mention: dict[str, Any],
-    fact_values: list[float],
-) -> bool:
-    """
-    Determine whether a prose number is supported by supplied facts.
-
-    Percentage facts are typically stored as decimals, so 50.2%
-    is compared against both 50.2 and 0.502-style representations.
-    """
-
-    stated = float(mention["value"])
-
-    for fact in fact_values:
-
-        comparisons = [fact]
-
-        if mention["percent"]:
-            comparisons.append(fact * 100.0)
-
-        for comparison in comparisons:
-
-            # Currency / compact figures need rounding tolerance.
-            if mention["currency"]:
-                tolerance = max(
-                    1.0,
-                    abs(stated) * 0.01,
-                )
-
-            # Percentage prose commonly rounds to one decimal place.
-            elif mention["percent"]:
-                tolerance = 0.15
-
-            else:
-                tolerance = max(
-                    0.5,
-                    abs(stated) * 0.005,
-                )
-
-            if abs(stated - comparison) <= tolerance:
-                return True
-
-    return False
-
-
-# ------------------------------------------------------------
-# Validation
-# ------------------------------------------------------------
-
-def validate_response(
-    response: dict[str, Any],
-    selected_candidates: list[dict[str, Any]],
-    fact_packet: dict[str, Any],
-    metric_catalog: dict[str, Any] | None = None,
-    max_flags: int = 4,
-) -> bool:
-    """
-    Validate generated Management Flags.
-
-    Returns True only when every control passes.
-    Raises ManagementFlagValidationError on failure.
-    """
-
-    if metric_catalog is None:
-        metric_catalog = load_metric_catalog()
-
-    # --------------------------------------------------------
-    # Basic response structure
-    # --------------------------------------------------------
-
-    if not isinstance(response, dict):
+    if not isinstance(response, Mapping):
         raise ManagementFlagValidationError(
-            "LLM response must be a dictionary."
+            "Writer response must be a mapping/object."
         )
 
     flags = response.get("flags")
 
+    if flags is None:
+        raise ManagementFlagValidationError(
+            "Writer response is missing 'flags'."
+        )
+
     if not isinstance(flags, list):
         raise ManagementFlagValidationError(
-            "Response must contain a 'flags' list."
+            "'flags' must be a list."
         )
 
-    if len(flags) > max_flags:
-        raise ManagementFlagValidationError(
-            f"Response contains {len(flags)} flags; "
-            f"maximum allowed is {max_flags}."
+    normalized: list[dict[str, Any]] = []
+
+    for index, flag in enumerate(flags, start=1):
+        flag = _to_plain_dict(flag)
+
+        if not isinstance(flag, Mapping):
+            raise ManagementFlagValidationError(
+                f"Flag {index} must be an object."
+            )
+
+        normalized.append(dict(flag))
+
+    return normalized
+
+
+# ---------------------------------------------------------------------
+# Fact packet traversal
+# ---------------------------------------------------------------------
+
+
+def _collect_numeric_facts(
+    value: Any,
+    path: str = "",
+) -> list[tuple[str, float]]:
+    """
+    Recursively collect every finite numeric value from the certified
+    fact packet.
+
+    Booleans are deliberately excluded because bool is a subclass of int.
+    """
+
+    results: list[tuple[str, float]] = []
+
+    value = _to_plain_dict(value)
+
+    if isinstance(value, bool):
+        return results
+
+    if isinstance(value, (int, float)):
+        numeric = float(value)
+
+        if math.isfinite(numeric):
+            results.append((path, numeric))
+
+        return results
+
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            child_path = f"{path}.{key}" if path else str(key)
+
+            results.extend(
+                _collect_numeric_facts(
+                    child,
+                    child_path,
+                )
+            )
+
+        return results
+
+    if isinstance(value, Sequence) and not isinstance(
+        value,
+        (str, bytes, bytearray),
+    ):
+        for index, child in enumerate(value):
+            child_path = f"{path}[{index}]"
+
+            results.extend(
+                _collect_numeric_facts(
+                    child,
+                    child_path,
+                )
+            )
+
+    return results
+
+
+def _collect_fact_keys(value: Any) -> set[str]:
+    """Collect all dictionary keys appearing anywhere in the fact packet."""
+
+    keys: set[str] = set()
+
+    value = _to_plain_dict(value)
+
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            keys.add(str(key))
+            keys.update(_collect_fact_keys(child))
+
+    elif isinstance(value, Sequence) and not isinstance(
+        value,
+        (str, bytes, bytearray),
+    ):
+        for child in value:
+            keys.update(_collect_fact_keys(child))
+
+    return keys
+
+
+# ---------------------------------------------------------------------
+# Numeric claim parsing
+# ---------------------------------------------------------------------
+
+
+# Matches examples including:
+#   $0.5K
+#   $5.6M
+#   115.3%
+#   -0.2 ppt
+#   855
+#   13,360.7
+#
+# Currency symbol is optional because executive prose may omit it.
+NUMBER_PATTERN = re.compile(
+    r"""
+    (?<![\w])
+    (?P<currency>\$)?
+    (?P<sign>[+-])?
+    (?P<number>
+        (?:\d{1,3}(?:,\d{3})+|\d+)
+        (?:\.\d+)?
+    )
+    \s*
+    (?P<suffix>[KMBkmb])?
+    \s*
+    (?P<percent>%|pct\b|percent\b)?
+    \s*
+    (?P<ppt>
+        ppts?\b
+        |
+        percentage\s+points?\b
+    )?
+    """,
+    re.VERBOSE | re.IGNORECASE,
+)
+
+
+def _decimal_places(number_text: str) -> int:
+    if "." not in number_text:
+        return 0
+
+    return len(number_text.split(".", 1)[1])
+
+
+def _is_period_reference(
+    text: str,
+    match: re.Match[str],
+) -> bool:
+    """
+    Ignore obvious period labels such as:
+        12 month
+        12-month
+        12 months
+        1 year
+
+    These are descriptors, not claimed financial values.
+    """
+
+    following = text[match.end() : match.end() + 15].lower()
+
+    return bool(
+        re.match(
+            r"""
+            ^\s*-?\s*
+            (
+                months?
+                |
+                years?
+                |
+                quarters?
+            )\b
+            """,
+            following,
+            re.VERBOSE,
         )
-
-    # Zero flags is valid.
-    if not flags:
-        return True
-
-    # --------------------------------------------------------
-    # Period / scope
-    # --------------------------------------------------------
-
-    expected_period = fact_packet.get("period")
-
-    if response.get("as_of_month") != expected_period:
-        raise ManagementFlagValidationError(
-            "Response period does not match the finance snapshot."
-        )
-
-    expected_scope = fact_packet.get("scope", {})
-
-    if response.get("scope") != expected_scope:
-        raise ManagementFlagValidationError(
-            "Response scope does not match the finance snapshot."
-        )
-
-    # --------------------------------------------------------
-    # Candidate lookup
-    # --------------------------------------------------------
-
-    selected_by_id = {
-        candidate["id"]: candidate
-        for candidate in selected_candidates
-    }
-
-    known_metric_ids = get_known_metric_ids(
-        metric_catalog
     )
 
-    seen_candidate_ids: set[str] = set()
 
-    # --------------------------------------------------------
-    # Validate each flag
-    # --------------------------------------------------------
+def _extract_numeric_claims(
+    text: str,
+) -> list[dict[str, Any]]:
+    """Extract numeric claims from executive prose."""
+
+    claims: list[dict[str, Any]] = []
+
+    for match in NUMBER_PATTERN.finditer(text):
+
+        if _is_period_reference(text, match):
+            continue
+
+        raw = match.group(0).strip()
+
+        number_text = match.group("number").replace(",", "")
+
+        try:
+            value = float(number_text)
+        except ValueError:
+            continue
+
+        if match.group("sign") == "-":
+            value *= -1
+
+        suffix = (
+            match.group("suffix").upper()
+            if match.group("suffix")
+            else None
+        )
+
+        multiplier = {
+            None: 1.0,
+            "K": 1_000.0,
+            "M": 1_000_000.0,
+            "B": 1_000_000_000.0,
+        }[suffix]
+
+        display_value = value * multiplier
+
+        percent = bool(match.group("percent"))
+        ppt = bool(match.group("ppt"))
+
+        claims.append(
+            {
+                "raw": raw,
+                "value": value,
+                "display_value": display_value,
+                "suffix": suffix,
+                "multiplier": multiplier,
+                "percent": percent,
+                "ppt": ppt,
+                "decimal_places": _decimal_places(number_text),
+            }
+        )
+
+    return claims
+
+
+# ---------------------------------------------------------------------
+# Formatting-aware numeric comparison
+# ---------------------------------------------------------------------
+
+
+def _rounding_tolerance(
+    claim: dict[str, Any],
+) -> float:
+    """
+    Calculate the maximum difference implied by displayed precision.
+
+    Example:
+        $0.5K
+
+    One decimal in thousands has a display step of $100.
+    Therefore any certified value within $50 of $500 may legitimately
+    round to $0.5K.
+
+        $5.6M
+
+    One decimal in millions has a display step of $100,000.
+    Tolerance = $50,000.
+    """
+
+    decimal_places = claim["decimal_places"]
+    multiplier = claim["multiplier"]
+
+    display_step = multiplier * (10 ** (-decimal_places))
+
+    return display_step / 2 + 1e-9
+
+
+def _claim_matches_fact(
+    claim: dict[str, Any],
+    fact_value: float,
+) -> bool:
+    """
+    Determine whether one displayed numeric claim can be derived solely
+    by formatting / rounding a certified numeric fact.
+    """
+
+    # -------------------------------------------------------------
+    # Percentage-point claims
+    # -------------------------------------------------------------
+
+    if claim["ppt"]:
+
+        claimed_ppts = claim["display_value"]
+
+        tolerance = (
+            10 ** (-claim["decimal_places"])
+        ) / 2 + 1e-9
+
+        return math.isclose(
+            fact_value,
+            claimed_ppts,
+            abs_tol=tolerance,
+            rel_tol=0.0,
+        )
+
+    # -------------------------------------------------------------
+    # Percent / pct claims
+    #
+    # Certified ratio facts are normally stored as decimals:
+    #   1.152956 -> 115.3%
+    #
+    # We also permit already-percentage-scaled facts in case a
+    # certified metric is intentionally stored that way.
+    # -------------------------------------------------------------
+
+    if claim["percent"]:
+
+        claimed_pct = claim["value"]
+
+        pct_tolerance = (
+            10 ** (-claim["decimal_places"])
+        ) / 2 + 1e-9
+
+        fact_as_pct = fact_value * 100
+
+        if math.isclose(
+            fact_as_pct,
+            claimed_pct,
+            abs_tol=pct_tolerance,
+            rel_tol=0.0,
+        ):
+            return True
+
+        if math.isclose(
+            fact_value,
+            claimed_pct,
+            abs_tol=pct_tolerance,
+            rel_tol=0.0,
+        ):
+            return True
+
+        return False
+
+    # -------------------------------------------------------------
+    # Currency / compact notation / ordinary numbers
+    # -------------------------------------------------------------
+
+    tolerance = _rounding_tolerance(claim)
+
+    return math.isclose(
+        fact_value,
+        claim["display_value"],
+        abs_tol=tolerance,
+        rel_tol=0.0,
+    )
+
+
+def _number_is_supported(
+    claim: dict[str, Any],
+    numeric_facts: list[tuple[str, float]],
+) -> bool:
+    """Return True if any certified fact supports this displayed claim."""
+
+    for _, fact_value in numeric_facts:
+        if _claim_matches_fact(
+            claim,
+            fact_value,
+        ):
+            return True
+
+    return False
+
+
+# ---------------------------------------------------------------------
+# Schema validation
+# ---------------------------------------------------------------------
+
+
+def _validate_schema(
+    flags: list[dict[str, Any]],
+) -> None:
+
+    if len(flags) > 4:
+        raise ManagementFlagValidationError(
+            f"Response contains {len(flags)} flags; maximum is 4."
+        )
+
+    required_fields = {
+        "candidate_id",
+        "category",
+        "severity",
+        "headline",
+        "detail",
+        "source_metrics",
+    }
+
+    allowed_severities = {
+        "positive",
+        "negative",
+        "mixed",
+        "neutral",
+    }
 
     for index, flag in enumerate(flags, start=1):
 
-        if not isinstance(flag, dict):
-            raise ManagementFlagValidationError(
-                f"Flag {index} is not an object."
-            )
-
-        required_fields = {
-            "candidate_id",
-            "category",
-            "severity",
-            "headline",
-            "detail",
-            "source_metrics",
-        }
-
-        missing = required_fields - set(flag.keys())
+        missing = required_fields - set(flag)
 
         if missing:
             raise ManagementFlagValidationError(
-                f"Flag {index} missing fields: "
+                f"Flag {index} is missing required fields: "
                 f"{sorted(missing)}"
             )
 
-        candidate_id = flag["candidate_id"]
-
-        if candidate_id not in selected_by_id:
-            raise ManagementFlagValidationError(
-                f"Flag {index} references unselected "
-                f"candidate '{candidate_id}'."
-            )
-
-        if candidate_id in seen_candidate_ids:
-            raise ManagementFlagValidationError(
-                f"Candidate '{candidate_id}' appears more than once."
-            )
-
-        seen_candidate_ids.add(candidate_id)
-
-        candidate = selected_by_id[candidate_id]
-
-        # ----------------------------------------------------
-        # Category / severity
-        # ----------------------------------------------------
-
-        if flag["category"] != candidate["category"]:
-            raise ManagementFlagValidationError(
-                f"Flag {index} category does not match "
-                f"candidate '{candidate_id}'."
-            )
-
-        if flag["severity"] not in ALLOWED_SEVERITIES:
-            raise ManagementFlagValidationError(
-                f"Flag {index} has invalid severity "
-                f"'{flag['severity']}'."
-            )
-
-        # ----------------------------------------------------
-        # Text requirements
-        # ----------------------------------------------------
-
-        headline = flag["headline"]
-        detail = flag["detail"]
-
-        if not isinstance(headline, str) or not headline.strip():
+        if not str(flag["headline"]).strip():
             raise ManagementFlagValidationError(
                 f"Flag {index} has an empty headline."
             )
 
-        if not isinstance(detail, str) or not detail.strip():
+        if not str(flag["detail"]).strip():
             raise ManagementFlagValidationError(
                 f"Flag {index} has an empty detail."
             )
 
-        if len(headline) > 180:
-            raise ManagementFlagValidationError(
-                f"Flag {index} headline is too long."
-            )
+        severity = str(flag["severity"]).lower()
 
-        if len(detail) > 350:
+        if severity not in allowed_severities:
             raise ManagementFlagValidationError(
-                f"Flag {index} detail is too long."
+                f"Flag {index} has unsupported severity "
+                f"{flag['severity']!r}."
             )
-
-        # ----------------------------------------------------
-        # Source metrics
-        # ----------------------------------------------------
 
         source_metrics = flag["source_metrics"]
 
@@ -413,97 +515,218 @@ def validate_response(
             or not source_metrics
         ):
             raise ManagementFlagValidationError(
-                f"Flag {index} must cite at least one metric."
+                f"Flag {index} must contain at least one source metric."
             )
 
-        unknown_metrics = (
-            set(source_metrics)
-            - known_metric_ids
+
+# ---------------------------------------------------------------------
+# Candidate validation
+# ---------------------------------------------------------------------
+
+
+def _candidate_id(candidate: Any) -> str | None:
+
+    candidate = _to_plain_dict(candidate)
+
+    if isinstance(candidate, Mapping):
+        return (
+            candidate.get("candidate_id")
+            or candidate.get("id")
         )
 
-        if unknown_metrics:
+    return None
+
+
+def _validate_candidate_mapping(
+    flags: list[dict[str, Any]],
+    selected_candidates: Sequence[Any],
+) -> None:
+
+    selected_ids = {
+        candidate_id
+        for candidate in selected_candidates
+        if (candidate_id := _candidate_id(candidate))
+    }
+
+    for index, flag in enumerate(flags, start=1):
+
+        candidate_id = flag.get("candidate_id")
+
+        if candidate_id not in selected_ids:
             raise ManagementFlagValidationError(
-                f"Flag {index} cites unknown metrics: "
-                f"{sorted(unknown_metrics)}"
+                f"Flag {index} references candidate "
+                f"{candidate_id!r}, which was not selected "
+                f"by the deterministic materiality engine."
             )
 
-        allowed_for_candidate = set(
-            candidate.get("metric_ids", [])
-        )
 
-        unsupported_sources = (
-            set(source_metrics)
-            - allowed_for_candidate
-        )
+# ---------------------------------------------------------------------
+# Source-metric validation
+# ---------------------------------------------------------------------
 
-        if unsupported_sources:
-            raise ManagementFlagValidationError(
-                f"Flag {index} cites metrics not approved for "
-                f"candidate '{candidate_id}': "
-                f"{sorted(unsupported_sources)}"
+
+def _validate_source_metrics(
+    flags: list[dict[str, Any]],
+    fact_packet: Any,
+    selected_candidates: Sequence[Any],
+) -> None:
+
+    known_metrics = _collect_fact_keys(fact_packet)
+
+    # Candidate fact packets may include derived / bounded metrics that
+    # are intentionally passed to the writer.
+    for candidate in selected_candidates:
+        candidate = _to_plain_dict(candidate)
+
+        if isinstance(candidate, Mapping):
+            known_metrics.update(
+                _collect_fact_keys(candidate.get("facts", {}))
             )
 
-        # ----------------------------------------------------
-        # Numeric grounding
-        # ----------------------------------------------------
+            for metric in candidate.get("metric_ids", []) or []:
+                known_metrics.add(str(metric))
 
-        fact_values = _flatten_numeric_values(
-            candidate.get("facts", {})
-        )
+    for index, flag in enumerate(flags, start=1):
 
-        prose = f"{headline} {detail}"
-
-        numeric_mentions = _extract_numeric_mentions(
-            prose
-        )
-
-        unsupported_numbers = []
-
-        for mention in numeric_mentions:
-            if not _matches_fact(
-                mention,
-                fact_values,
-            ):
-                unsupported_numbers.append(
-                    mention["raw"]
-                )
-
-        if unsupported_numbers:
-            raise ManagementFlagValidationError(
-                f"Flag {index} contains unsupported numbers: "
-                f"{unsupported_numbers}"
-            )
-
-        # ----------------------------------------------------
-        # Weak / generic language checks
-        # ----------------------------------------------------
-
-        lower_prose = prose.lower()
-
-        banned_phrases = [
-            "strong performance",
-            "excellent performance",
-            "great performance",
-            "very strong",
-            "doing well",
+        unknown = [
+            metric
+            for metric in flag["source_metrics"]
+            if metric not in known_metrics
         ]
 
-        for phrase in banned_phrases:
-            if phrase in lower_prose:
-                raise ManagementFlagValidationError(
-                    f"Flag {index} contains unsupported generic "
-                    f"language: '{phrase}'."
+        if unknown:
+            raise ManagementFlagValidationError(
+                f"Flag {index} references unknown source metrics: "
+                f"{unknown}"
+            )
+
+
+# ---------------------------------------------------------------------
+# Numeric grounding validation
+# ---------------------------------------------------------------------
+
+
+def _validate_numbers(
+    flags: list[dict[str, Any]],
+    fact_packet: Any,
+    selected_candidates: Sequence[Any],
+) -> None:
+
+    numeric_facts = _collect_numeric_facts(
+        fact_packet
+    )
+
+    # Also include facts explicitly supplied inside selected candidates.
+    # These are part of the bounded writer context and therefore valid
+    # certified inputs for commentary.
+    for candidate in selected_candidates:
+        candidate = _to_plain_dict(candidate)
+
+        if isinstance(candidate, Mapping):
+            numeric_facts.extend(
+                _collect_numeric_facts(
+                    candidate.get("facts", {})
+                )
+            )
+
+    for index, flag in enumerate(flags, start=1):
+
+        text = " ".join(
+            [
+                str(flag.get("headline", "")),
+                str(flag.get("detail", "")),
+            ]
+        )
+
+        claims = _extract_numeric_claims(text)
+
+        unsupported: list[str] = []
+
+        for claim in claims:
+
+            if not _number_is_supported(
+                claim,
+                numeric_facts,
+            ):
+                unsupported.append(
+                    claim["raw"]
                 )
 
-    return True
+        if unsupported:
+            raise ManagementFlagValidationError(
+                f"Flag {index} contains unsupported numbers: "
+                f"{unsupported}"
+            )
 
 
-# ------------------------------------------------------------
-# Smoke-test helper
-# ------------------------------------------------------------
+# ---------------------------------------------------------------------
+# Deduplication
+# ---------------------------------------------------------------------
 
-if __name__ == "__main__":
 
-    print(
-        "validator.py loaded successfully."
+def _validate_no_duplicate_candidates(
+    flags: list[dict[str, Any]],
+) -> None:
+
+    seen: set[str] = set()
+
+    for index, flag in enumerate(flags, start=1):
+
+        candidate_id = str(
+            flag["candidate_id"]
+        )
+
+        if candidate_id in seen:
+            raise ManagementFlagValidationError(
+                f"Flag {index} duplicates candidate "
+                f"{candidate_id!r}."
+            )
+
+        seen.add(candidate_id)
+
+
+# ---------------------------------------------------------------------
+# Public validator
+# ---------------------------------------------------------------------
+
+
+def validate_response(
+    response: Any,
+    selected_candidates: Sequence[Any],
+    fact_packet: Any,
+) -> bool:
+    """
+    Validate generated Management Flag commentary.
+
+    Returns True only when the generated response is safe to expose
+    through the presentation layer.
+    """
+
+    flags = _get_flags(response)
+
+    _validate_schema(
+        flags
     )
+
+    _validate_candidate_mapping(
+        flags=flags,
+        selected_candidates=selected_candidates,
+    )
+
+    _validate_source_metrics(
+        flags=flags,
+        fact_packet=fact_packet,
+        selected_candidates=selected_candidates,
+    )
+
+    _validate_no_duplicate_candidates(
+        flags
+    )
+
+    _validate_numbers(
+        flags=flags,
+        fact_packet=fact_packet,
+        selected_candidates=selected_candidates,
+    )
+
+    return True
