@@ -1,7 +1,5 @@
-streamlit
+streamlit>=1.36
 pandas
 duckdb
 python-dotenv
 openai
-plotly
-pytest

@@ -136,7 +136,7 @@ st.caption("Interactive Power BI reporting with AI-assisted management commentar
 
 # Keep the Power BI canvas at full width so its controls and labels stay readable.
 st.markdown("#### Executive finance report")
-components.iframe(PUBLIC_POWER_BI_URL, height=820, scrolling=False)
+st.iframe(PUBLIC_POWER_BI_URL, height=820)
 st.caption("Use the filters inside Power BI to explore the report.")
 
 st.divider()

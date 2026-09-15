@@ -1,0 +1,21 @@
+kind = "api"
+previewPath = "/"
+title = "Stratum Streamlit Backend"
+version = "1.0.0"
+id = "3B4_FFSkEVBkAeYMFRJ2e"
+
+[[services]]
+localPort = 8501
+name = "Stratum Streamlit App"
+paths = ["/"]
+
+[services.development]
+run = "python -m streamlit run stratum/public_app.py --server.address=0.0.0.0 --server.port=8501 --server.headless=true"
+
+[services.production]
+
+[services.production.run]
+args = ["python", "-m", "streamlit", "run", "artifacts/api-server/stratum/public_app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
+
+[services.production.health.startup]
+path = "/"
