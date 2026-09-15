@@ -1,0 +1,40 @@
+modules = ["python-3.12"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["glibcLocales", "openssl"]
+
+[agent]
+expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Stratum Streamlit App"
+
+[[workflows.workflow]]
+name = "Stratum Streamlit App"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python -m streamlit run public_app.py --server.address=0.0.0.0 --server.port=8501 --server.headless=true"
+waitForPort = 8501
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["python", "-m", "streamlit", "run", "public_app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]
+
+[[ports]]
+localPort = 8501
+externalPort = 80
