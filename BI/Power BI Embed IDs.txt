@@ -8,6 +8,7 @@ Application (Client) ID:
 
 Power BI Report ID:
 61b82083-8e1e-4c0b-9155-aba711a00224
+<<<<<<< HEAD
 
 
 $env:POWERBI_TENANT_ID="ed76fcdf-8c13-4129-917c-9088f819cfd8"
@@ -16,3 +17,5 @@ $env:POWERBI_REPORT_ID="61b82083-8e1e-4c0b-9155-aba711a00224"
 $env:POWERBI_CLIENT_SECRET=".5m8Q~tv95-VNBnSDn4~qeSRip_tN5HAITOMHc5p"
 $env:POWERBI_REDIRECT_URI="http://localhost:8501"
 
+=======
+>>>>>>> abbf3a102dd901994cb05a8d6feafa60802bfad9
