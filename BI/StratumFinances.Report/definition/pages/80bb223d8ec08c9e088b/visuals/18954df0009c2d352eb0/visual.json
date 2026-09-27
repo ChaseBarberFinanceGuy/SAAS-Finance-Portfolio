@@ -1,0 +1,55 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.12.0/schema.json",
+  "name": "18954df0009c2d352eb0",
+  "position": {
+    "x": 1506,
+    "y": 48,
+    "z": 11003,
+    "height": 300,
+    "width": 300
+  },
+  "visual": {
+    "visualType": "cardVisual",
+    "query": {
+      "queryState": {
+        "Data": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "Finance Metrics"
+                    }
+                  },
+                  "Property": "New MRR"
+                }
+              },
+              "queryRef": "Finance Metrics.New MRR",
+              "nativeQueryRef": "New MRR"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Measure": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "Finance Metrics"
+                  }
+                },
+                "Property": "New MRR"
+              }
+            },
+            "direction": "Descending"
+          }
+        ],
+        "isDefaultSort": true
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

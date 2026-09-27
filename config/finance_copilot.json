@@ -1,0 +1,476 @@
+{
+  "version": "0.1.0",
+  "name": "Stratum Finance Copilot",
+  "description": "Governance configuration for supported Finance Copilot intents, metric bundles, and response boundaries.",
+  "default_as_of_month": "latest",
+
+  "policy": {
+    "finance_engine": "deterministic",
+    "llm_role": "explanation_only",
+    "allow_llm_calculation": false,
+    "allow_unapproved_metrics": false,
+    "allow_unsupported_causal_claims": false,
+    "allow_forecasting": false,
+    "max_metrics_per_intent": 10,
+    "unsupported_behavior": "explicitly_state_not_tracked",
+    "partial_support_behavior": "answer_supported_portion_and_identify_missing_metric"
+  },
+
+  "supported_metric_ids": [
+    "ending_mrr",
+    "current_arr",
+    "avg_ttm_arr",
+    "arr_yoy_growth_pct",
+    "new_mrr",
+    "expansion_mrr",
+    "reactivation_mrr",
+    "contraction_mrr",
+    "churned_mrr",
+    "active_customers",
+    "avg_mrr_per_account",
+    "avg_arr_per_account",
+    "nrr_12m",
+    "grr_12m",
+    "logo_retention_12m",
+    "logo_churn_12m",
+    "top_5_arr_share",
+    "top_10_arr_share",
+    "top_20_arr_share",
+    "active_customers_yoy_pct",
+    "avg_arr_per_account_yoy_pct",
+    "net_mrr_change",
+    "net_mrr_change_pct",
+    "beginning_mrr"
+  ],
+
+  "intents": {
+    "current_arr": {
+      "description": "Report current annual recurring revenue for the selected period.",
+      "example_questions": [
+        "What is ARR?",
+        "What was ARR in June?",
+        "How much annual recurring revenue do we have?"
+      ],
+      "metrics": [
+        "current_arr"
+      ],
+      "allowed_analysis": [
+        "state current ARR",
+        "format ARR for executive readability"
+      ]
+    },
+
+    "ending_mrr": {
+      "description": "Report ending monthly recurring revenue for the selected period.",
+      "example_questions": [
+        "What is MRR?",
+        "What was ending MRR?",
+        "How much monthly recurring revenue do we have?"
+      ],
+      "metrics": [
+        "ending_mrr"
+      ],
+      "allowed_analysis": [
+        "state ending MRR",
+        "format MRR for executive readability"
+      ]
+    },
+
+    "arr_growth": {
+      "description": "Explain current ARR scale and year-over-year growth.",
+      "example_questions": [
+        "How fast is ARR growing?",
+        "What is ARR growth year over year?",
+        "How is recurring revenue growth?"
+      ],
+      "metrics": [
+        "current_arr",
+        "arr_yoy_growth_pct",
+        "avg_ttm_arr"
+      ],
+      "allowed_analysis": [
+        "state current ARR",
+        "state ARR year-over-year growth",
+        "compare current ARR with trailing-twelve-month average ARR",
+        "describe whether current run-rate is above or below the trailing average"
+      ]
+    },
+
+    "mrr_bridge": {
+      "description": "Explain the certified recurring-revenue movements that reconcile beginning MRR to ending MRR.",
+      "example_questions": [
+        "What drove MRR this month?",
+        "Why did MRR change?",
+        "What were the recurring revenue drivers?",
+        "Explain the MRR bridge."
+      ],
+      "metrics": [
+        "beginning_mrr",
+        "new_mrr",
+        "expansion_mrr",
+        "reactivation_mrr",
+        "contraction_mrr",
+        "churned_mrr",
+        "net_mrr_change",
+        "net_mrr_change_pct",
+        "ending_mrr"
+      ],
+      "allowed_analysis": [
+        "state beginning and ending MRR",
+        "describe positive MRR movements",
+        "describe negative MRR movements",
+        "state certified net MRR change",
+        "identify the largest supplied bridge components",
+        "explain the bridge without inventing operational causes"
+      ]
+    },
+
+    "nrr": {
+      "description": "Report and explain twelve-month net revenue retention.",
+      "example_questions": [
+        "What is NRR?",
+        "How is net retention?",
+        "Are existing customers expanding?"
+      ],
+      "metrics": [
+        "nrr_12m"
+      ],
+      "allowed_analysis": [
+        "state NRR",
+        "explain what NRR measures",
+        "describe whether expansion offsets contraction and churn based on the certified NRR value"
+      ]
+    },
+
+    "grr": {
+      "description": "Report and explain twelve-month gross revenue retention.",
+      "example_questions": [
+        "What is GRR?",
+        "How is gross retention?",
+        "How much recurring revenue are we retaining before expansion?"
+      ],
+      "metrics": [
+        "grr_12m"
+      ],
+      "allowed_analysis": [
+        "state GRR",
+        "explain what GRR measures",
+        "describe retention of existing recurring revenue before expansion"
+      ]
+    },
+
+    "retention_quality": {
+      "description": "Provide a bounded view of revenue and logo retention.",
+      "example_questions": [
+        "How is retention overall?",
+        "Are we retaining customers and revenue?",
+        "What does retention quality look like?"
+      ],
+      "metrics": [
+        "nrr_12m",
+        "grr_12m",
+        "logo_retention_12m",
+        "logo_churn_12m"
+      ],
+      "allowed_analysis": [
+        "compare NRR and GRR",
+        "compare revenue retention with logo retention",
+        "identify expansion strength or gross retention leakage from supplied metrics",
+        "describe the distinction between revenue and logo retention"
+      ]
+    },
+
+    "logo_retention": {
+      "description": "Report customer-logo retention and churn.",
+      "example_questions": [
+        "Are we retaining customers?",
+        "What is customer churn?",
+        "What is logo retention?"
+      ],
+      "metrics": [
+        "logo_retention_12m",
+        "logo_churn_12m"
+      ],
+      "allowed_analysis": [
+        "state logo retention",
+        "state logo churn",
+        "explain customer retention versus customer loss"
+      ]
+    },
+
+    "active_customers": {
+      "description": "Report the current number of active customers.",
+      "example_questions": [
+        "How many customers do we have?",
+        "How many active accounts are there?"
+      ],
+      "metrics": [
+        "active_customers"
+      ],
+      "allowed_analysis": [
+        "state active customer count"
+      ]
+    },
+
+    "customer_growth": {
+      "description": "Explain active-customer growth using certified current and year-over-year values.",
+      "example_questions": [
+        "Are customers growing?",
+        "How fast is the customer base growing?",
+        "What is customer growth year over year?"
+      ],
+      "metrics": [
+        "active_customers",
+        "active_customers_yoy_pct"
+      ],
+      "allowed_analysis": [
+        "state active customers",
+        "state year-over-year customer growth",
+        "describe whether the active customer base increased or decreased"
+      ]
+    },
+
+    "arr_per_account": {
+      "description": "Report average annual recurring revenue per active account.",
+      "example_questions": [
+        "What is ARR per customer?",
+        "How much recurring revenue do we average per account?"
+      ],
+      "metrics": [
+        "avg_arr_per_account"
+      ],
+      "allowed_analysis": [
+        "state average ARR per active account"
+      ]
+    },
+
+    "customer_economics": {
+      "description": "Explain certified changes in recurring revenue per active account.",
+      "example_questions": [
+        "Are we getting more revenue per customer?",
+        "How are customer economics changing?",
+        "Is ARR per account increasing?"
+      ],
+      "metrics": [
+        "active_customers",
+        "avg_arr_per_account",
+        "active_customers_yoy_pct",
+        "avg_arr_per_account_yoy_pct",
+        "arr_yoy_growth_pct"
+      ],
+      "allowed_analysis": [
+        "state average ARR per account",
+        "state year-over-year change in ARR per account",
+        "compare customer growth with ARR growth",
+        "describe whether growth reflects more customers, more ARR per account, or both",
+        "do not attribute changes to pricing, mix, or upsell unless separately certified"
+      ]
+    },
+
+    "concentration": {
+      "description": "Explain certified customer ARR concentration.",
+      "example_questions": [
+        "Are we too concentrated?",
+        "How much revenue comes from our largest customers?",
+        "What is customer concentration?"
+      ],
+      "metrics": [
+        "top_5_arr_share",
+        "top_10_arr_share",
+        "top_20_arr_share"
+      ],
+      "allowed_analysis": [
+        "state top-5 ARR concentration",
+        "state top-10 ARR concentration",
+        "state top-20 ARR concentration",
+        "compare concentration levels across supplied tiers",
+        "describe concentration exposure without assigning an unsupported risk rating"
+      ]
+    },
+
+    "period_compare": {
+      "description": "Compare approved metrics between two supported reporting periods.",
+      "example_questions": [
+        "How did June compare with May?",
+        "What changed from last month?",
+        "Compare this month to the prior month."
+      ],
+      "metrics": [],
+      "dynamic_metric_selection": true,
+      "allowed_metric_source": "supported_metric_ids",
+      "allowed_analysis": [
+        "compare only explicitly requested supported metrics",
+        "state current and comparison-period values",
+        "state certified change values when supplied by the deterministic engine",
+        "do not calculate unsupported derived metrics"
+      ]
+    },
+
+    "year_over_year": {
+      "description": "Summarize available certified year-over-year changes.",
+      "example_questions": [
+        "What changed versus last year?",
+        "How are we doing year over year?",
+        "What are the biggest YoY changes?"
+      ],
+      "metrics": [
+        "arr_yoy_growth_pct",
+        "active_customers_yoy_pct",
+        "avg_arr_per_account_yoy_pct"
+      ],
+      "allowed_analysis": [
+        "state certified year-over-year changes",
+        "compare supplied YoY growth rates",
+        "identify the largest supplied YoY movement"
+      ]
+    },
+
+    "management_summary": {
+      "description": "Return the existing validated Management Flags rather than generating a second independent summary.",
+      "example_questions": [
+        "What should management pay attention to?",
+        "What are the key takeaways this month?",
+        "Summarize the business for management."
+      ],
+      "service": "management_flags",
+      "metrics": [],
+      "allowed_analysis": [
+        "reuse validated Management Flags output",
+        "do not generate an independent management-summary analysis"
+      ]
+    },
+
+    "metric_definition": {
+      "description": "Explain definitions from the governed metric catalog.",
+      "example_questions": [
+        "What does NRR mean?",
+        "How do we define ARR?",
+        "What is GRR?",
+        "How is churn defined?"
+      ],
+      "metrics": [],
+      "definition_source": "config/metrics.json",
+      "allowed_analysis": [
+        "explain only definitions present in the governed metric catalog",
+        "do not silently substitute a generic industry definition when a Stratum definition exists"
+      ]
+    }
+  },
+
+  "known_unsupported_metrics": {
+    "cac": {
+      "display_name": "Customer Acquisition Cost",
+      "reason": "Sales and marketing acquisition cost data is not currently included in the certified Stratum finance model."
+    },
+    "ltv": {
+      "display_name": "Customer Lifetime Value",
+      "reason": "Customer lifetime value is not currently calculated in the certified Stratum finance model."
+    },
+    "ltv_cac": {
+      "display_name": "LTV:CAC",
+      "reason": "LTV and CAC are not currently certified metrics."
+    },
+    "cac_payback": {
+      "display_name": "CAC Payback Period",
+      "reason": "Sales and marketing acquisition cost data is not currently included in the certified model."
+    },
+    "gross_margin": {
+      "display_name": "Gross Margin",
+      "reason": "Cost-of-revenue data is not currently included in the certified Stratum finance model."
+    },
+    "ebitda": {
+      "display_name": "EBITDA",
+      "reason": "The current model focuses on SaaS recurring-revenue metrics rather than a full income statement."
+    },
+    "free_cash_flow": {
+      "display_name": "Free Cash Flow",
+      "reason": "Cash-flow statement data is not currently included in the certified model."
+    },
+    "rule_of_40": {
+      "display_name": "Rule of 40",
+      "reason": "A certified profitability or free-cash-flow margin metric is not currently available."
+    },
+    "bookings": {
+      "display_name": "Bookings",
+      "reason": "Bookings are not currently tracked in the certified Stratum finance model."
+    },
+    "pipeline": {
+      "display_name": "Sales Pipeline",
+      "reason": "CRM and sales-pipeline data is outside the current certified finance dataset."
+    }
+  },
+
+  "unsupported_intents": {
+    "forecasting": {
+      "examples": [
+        "What will ARR be next quarter?",
+        "Where will revenue finish the year?",
+        "Forecast MRR for next month."
+      ],
+      "response": "Forecasting is not currently supported by the certified Stratum Finance Copilot."
+    },
+
+    "causal_attribution": {
+      "examples": [
+        "Did pricing cause churn?",
+        "Why did customers leave?",
+        "Did the sales team cause ARR growth?"
+      ],
+      "response": "The current certified finance model can describe measured changes, but it does not contain sufficient evidence for causal attribution."
+    },
+
+    "recommendation": {
+      "examples": [
+        "Should we raise prices?",
+        "Should we fire the sales team?",
+        "What customers should we drop?"
+      ],
+      "response": "The Finance Copilot can explain certified financial results but does not make unsupported operating recommendations."
+    }
+  },
+
+  "response_rules": {
+    "supported": {
+      "must_use_only_supplied_facts": true,
+      "must_use_only_approved_metrics": true,
+      "may_format_numbers": true,
+      "may_explain_metric_meaning": true,
+      "may_compare_supplied_values": true,
+      "may_calculate_new_metrics": false,
+      "may_infer_causality": false,
+      "may_invent_operational_drivers": false
+    },
+
+    "partially_supported": {
+      "answer_supported_portion": true,
+      "identify_unsupported_portion": true,
+      "do_not_fill_missing_information": true
+    },
+
+    "unsupported": {
+      "state_not_tracked": true,
+      "suggest_supported_domains": true,
+      "supported_domains": [
+        "ARR",
+        "MRR",
+        "recurring revenue growth",
+        "MRR movement",
+        "NRR",
+        "GRR",
+        "logo retention and churn",
+        "active customers",
+        "ARR per account",
+        "customer growth",
+        "customer concentration",
+        "management commentary"
+      ]
+    }
+  },
+
+  "default_messages": {
+    "unsupported_metric": "That metric is not currently tracked in Stratum's certified finance model.",
+    "unsupported_question": "That analysis is outside the current certified scope of Stratum Finance Copilot.",
+    "partial_support": "I can answer the portion of that question supported by Stratum's certified metrics, but some requested information is not currently tracked.",
+    "no_data": "That metric is supported, but no certified value is available for the requested reporting period."
+  }
+}
