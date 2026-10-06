@@ -10,6 +10,10 @@ from src.finance_copilot.validator import FinanceCopilotValidationError
 
 load_dotenv()
 
+def escape_currency_for_markdown(text: str) -> str:
+    """Prevent Streamlit Markdown from treating $ currency as LaTeX."""
+    return text.replace("$", r"\$")
+
 st.set_page_config(
     page_title="Stratum | Finance Copilot",
     page_icon="💬",
@@ -74,7 +78,8 @@ def format_sources(source_metrics: list[str]) -> str:
 
 def render_assistant_message(message: dict) -> None:
     with st.chat_message("assistant"):
-        st.markdown(message["content"])
+        st.markdown(escape_currency_for_markdown(message["content"])
+)
 
         source_metrics = message.get("source_metrics", [])
         if source_metrics:

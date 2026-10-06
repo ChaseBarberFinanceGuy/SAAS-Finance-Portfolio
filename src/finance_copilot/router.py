@@ -235,10 +235,10 @@ def _specific_metric_intent(question: str) -> str | None:
     ):
         return "logo_retention"
 
-    if _contains_any(text, ["nrr", "net revenue retention", "net retention"]):
+    if _contains_any(text, ["nrr", "net revenue retention", "net retention", "12-month nrr", "12 month nrr", "12-month net revenue retention", "12 month net revenue retention"]):
         return "nrr"
 
-    if _contains_any(text, ["grr", "gross revenue retention", "gross retention"]):
+    if _contains_any(text, ["grr", "gross revenue retention", "gross retention", "12-month grr", "12 month grr", "12-month gross revenue retention", "12 month gross revenue retention"]):
         return "grr"
 
     if _contains_any(
@@ -308,6 +308,8 @@ DEFINITION_ALIASES = {
     "grr_12m": ["grr", "gross revenue retention", "gross retention"],
     "logo_retention_12m": ["logo retention", "customer retention"],
     "logo_churn_12m": ["logo churn", "customer churn", "churn"],
+    "nrr_12m": ["nrr", "net revenue retention", "net retention", "12-month nrr", "12 month nrr", "12-month net revenue retention", "12 month net revenue retention"],
+    "grr_12m": ["grr", "gross revenue retention", "gross retention", "12-month grr", "12 month grr", "12-month gross revenue retention", "12 month gross revenue retention"],
 }
 
 
