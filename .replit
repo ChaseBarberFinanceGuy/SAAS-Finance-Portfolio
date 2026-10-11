@@ -7,3 +7,7 @@ packages = ["glibcLocales", "openssl"]
 [[ports]]
 localPort = 8501
 externalPort = 80
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["bash", "-lc", "python -m streamlit run app/Home.py --server.address=0.0.0.0 --server.port=8501 --server.headless=true"]
