@@ -17,6 +17,8 @@ import json
 import os
 from copy import deepcopy
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
 from openai import OpenAI
@@ -34,25 +36,9 @@ DISPLAY_FORMAT_RULES = """
 DISPLAY FORMATTING RULES
 
 Copy supplied display strings exactly, including signs, units, and precision.
-The deterministic formatter uses the following conventions:
-
-Currency:
-- Every monetary value must include a $ sign.
-- Values >= $1M: use millions with two decimals, e.g. $4.70M, $5.59M.
-- Values >= $1K and < $1M: use whole thousands when practical, e.g. $883K.
-- Do not write 4.70M or 5.59M without the currency symbol.
-
-Percentages:
-- Normally use one decimal place, e.g. 18.8%, 82.7%.
-- Use the same precision for compared percentages.
-
-Counts:
-- Use whole numbers with commas, e.g. 1,245 customers.
-
-Consistency:
-- Absolute rate deltas use two decimals and the words percentage points.
-- Relative deltas use signed percentages with one decimal place.
-- Do not override supplied display strings to change units or precision.
+Keep currency symbols, signs, units, and precision as supplied.
+Use absolute rate deltas as supplied in percentage points, and use relative
+changes as supplied in percent.
 """
 
 SYSTEM_INSTRUCTIONS = """
@@ -70,6 +56,9 @@ Rules:
    round, scale, calculate, or reformat raw numeric values yourself.
    Raw values are retained only for validation. If a numeric value has
    no supplied display field, omit that numeric claim.
+   For NRR, describe net expansion qualitatively when supported. Do not
+   subtract the break-even threshold or state an implied expansion rate
+   unless that exact rate has its own supplied display field.
 5. If the context says part of the question is unsupported, answer the
    supported portion and explicitly identify the unsupported portion.
 6. If the context is unsupported, do not improvise an answer.
@@ -90,14 +79,27 @@ when no direct metric list is appropriate.
 {DISPLAY_FORMAT_RULES}
 """.strip().replace("{DISPLAY_FORMAT_RULES}", DISPLAY_FORMAT_RULES)
 
-
+@lru_cache(maxsize=1)
+def _metric_catalog() -> dict[str, Any]:
+    path = Path(__file__).resolve().parents[2] / "config" / "metrics.json"
+    with path.open(encoding="utf-8") as catalog_file:
+        return json.load(catalog_file)["metrics"]
 
 
 def _metric_kind(metric_id: str, metadata: dict[str, Any]) -> str | None:
     """Prefer declared units; use metric names only, never numeric magnitude."""
-    for key in ("value_type", "metric_type", "data_type", "format", "unit", "units"):
-        unit = str(metadata.get(key, "")).lower().strip()
-        if unit in {"currency", "money", "dollars", "usd", "$"}:
+    catalog_format = _metric_catalog().get(metric_id, {}).get("format", {})
+    declared_format = metadata.get("format")
+    if isinstance(declared_format, dict):
+        declared_format = declared_format.get("type")
+    units = (
+        catalog_format.get("type"), declared_format, metadata.get("value_type"),
+        metadata.get("metric_type"), metadata.get("data_type"),
+        metadata.get("unit"), metadata.get("units"),
+    )
+    for declared_unit in units:
+        unit = str(declared_unit).lower().strip()
+        if unit in {"currency_compact", "currency", "money", "dollars", "usd", "$"}:
             return "currency"
         if unit in {"rate", "ratio", "percentage", "percent", "%", "fraction"}:
             return "rate"
@@ -113,7 +115,13 @@ def _metric_kind(metric_id: str, metadata: dict[str, Any]) -> str | None:
     return None
 
 
-def _display_number(value: Any, kind: str | None, *, delta: bool = False) -> str | None:
+def _display_number(
+    value: Any,
+    kind: str | None,
+    *,
+    delta: bool = False,
+    metric_format: dict[str, Any] | None = None,
+) -> str | None:
     """Format fractional rates without altering certified raw values."""
     if kind is None or isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
         return None
@@ -125,20 +133,28 @@ def _display_number(value: Any, kind: str | None, *, delta: bool = False) -> str
         return None
     magnitude = abs(number)
     sign = "-" if number < 0 else ("+" if delta and number > 0 else "")
+    style = metric_format or {}
+    prefix = style.get("prefix", "$" if kind == "currency" else "")
+    suffix = style.get("suffix", "%" if kind == "rate" else "")
+    scale, compact_unit = 1, ""
+    decimals = 0
     if kind == "currency":
+        decimals = 2
         if magnitude >= 1_000_000:
-            body = f"${(magnitude / 1_000_000).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP):,.2f}M"
+            scale, compact_unit = 1_000_000, "M"
         elif magnitude >= 1_000:
-            body = f"${(magnitude / 1_000).quantize(Decimal('1'), rounding=ROUND_HALF_UP):,.0f}K"
-        else:
-            body = f"${magnitude.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP):,.2f}"
-    elif kind == "count":
-        body = f"{magnitude.quantize(Decimal('1'), rounding=ROUND_HALF_UP):,.0f}"
-    elif kind == "points":
-        body = f"{(magnitude * 100).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP):.2f} percentage points"
-    else:
-        body = f"{(magnitude * 100).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP):.1f}%"
-    return sign + body
+            scale, compact_unit, decimals = 1_000, "K", 0
+    elif kind in {"rate", "points"}:
+        magnitude *= 100
+        decimals = 1
+        if kind == "points":
+            decimals, suffix = 2, " percentage points"
+
+    decimals = style.get("decimals", decimals)
+    rounded = (magnitude / scale).quantize(
+        Decimal(1).scaleb(-decimals), rounding=ROUND_HALF_UP
+    )
+    return f"{sign}{prefix}{rounded:,.{decimals}f}{compact_unit}{suffix}"
 
 
 def _format_context_for_display(context: dict[str, Any]) -> dict[str, Any]:
@@ -189,6 +205,7 @@ def _format_context_for_display(context: dict[str, Any]) -> dict[str, Any]:
                 continue
             display_kind = None
             signed = False
+            display_metric = current
             if deltas and key in relative_keys:
                 display_kind, signed = "rate", True
             elif deltas and key in absolute_keys:
@@ -196,9 +213,15 @@ def _format_context_for_display(context: dict[str, Any]) -> dict[str, Any]:
             elif key in value_keys:
                 display_kind = kind
             elif key_kind:
+                display_metric = key
                 display_kind = "points" if deltas and key_kind == "rate" else key_kind
                 signed = deltas
-            display = _display_number(value, display_kind, delta=signed)
+            metric_format = None
+            if display_kind != "points" and not (deltas and key in relative_keys):
+                metric_format = _metric_catalog().get(display_metric, {}).get("format")
+            display = _display_number(
+                value, display_kind, delta=signed, metric_format=metric_format
+            )
             if display is not None:
                 node[f"{key}_display"] = display
 
@@ -251,6 +274,8 @@ def write_copilot_answer(
     route: dict[str, Any],
     context: dict[str, Any],
     model: str = DEFAULT_MODEL,
+    *,
+    repair_guidance: str | None = None,
 ) -> dict[str, Any]:
     """
     Write one bounded Finance Copilot response.
@@ -292,9 +317,19 @@ def write_copilot_answer(
         "context": _format_context_for_display(context),
     }
 
+    instructions = SYSTEM_INSTRUCTIONS
+    if repair_guidance is not None:
+        instructions += (
+            "\nRepair the response using the same route and certified context. "
+            "Remove or correct unsupported claims and validate each numeric "
+            "claim against the supplied display strings before responding. "
+            "Keep the approved metrics and reporting period."
+        )
+        user_payload["validation_failure"] = repair_guidance
+
     response = client.responses.create(
         model=model,
-        instructions=SYSTEM_INSTRUCTIONS,
+        instructions=instructions,
         input=json.dumps(
             user_payload,
             indent=2,
